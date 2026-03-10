@@ -1,10 +1,11 @@
-import { resolve } from 'node:path'
 import { readdirSync, statSync } from 'node:fs'
-import { join, extname } from 'node:path'
+import { extname, join, resolve } from 'node:path'
 import { ASSET_CONTENT_TYPES } from '../../shared/constants.ts'
 
 // ----- MODULE-SCOPE CONSTANTS -----
-const PROJECT_ROOT = resolve(import.meta.dir, '../../../..')
+// Resolve project root regardless of whether we're running from source or dist/
+const MODULE_DIR = resolve(import.meta.dir, '../../../..')
+const PROJECT_ROOT = MODULE_DIR.replace(/[\\/]dist$/, '')
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',

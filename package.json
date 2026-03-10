@@ -1,6 +1,8 @@
 {
   "name": "opencode-pty",
-  "module": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
   "version": "0.2.3",
   "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering",
   "author": "shekohex",
@@ -26,27 +28,33 @@
   },
   "homepage": "https://github.com/shekohex/opencode-pty#readme",
   "files": [
-    "index.ts",
-    "src",
     "dist"
   ],
   "license": "MIT",
   "type": "module",
   "exports": {
-    "./*": "./src/*.ts",
-    "./*/*": "./src/*/*.ts",
-    "./*/*/*": "./src/*/*/*.ts",
-    "./*/*/*/*": "./src/*/*/*/*.ts",
-    "./*/*/*/*/*": "./src/*/*/*/*/*.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    },
+    "./*/*": {
+      "types": "./dist/src/*/*.d.ts",
+      "default": "./dist/src/*/*.js"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "unittest": "bun test",
     "test:e2e": "PW_DISABLE_TS_ESM=1 NODE_ENV=test bun --bun playwright test",
     "test:all": "bun unittest && bun test:e2e",
-    "build:dev": "bun clean && vite build --mode development",
-    "build:prod": "bun clean && vite build --mode production",
-    "prepack": "bun build:prod",
+    "build:plugin": "tsc -p tsconfig.build.json && bun x copyfiles -u 0 \"src/**/*.txt\" dist",
+    "build:dev": "bun clean && bun build:plugin && vite build --mode development",
+    "build:prod": "bun clean && bun build:plugin && vite build --mode production",
+    "prepublishOnly": "bun build:prod",
     "clean": "rm -rf dist playwright-report test-results",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
