@@ -1,5 +1,6 @@
 import type { IPty } from 'bun-pty'
 import type { RingBuffer } from './buffer.ts'
+import type { SnapshotState, TerminalSnapshot } from './snapshot.ts'
 import type moment from 'moment'
 
 export type PTYStatus = 'running' | 'exited' | 'killing' | 'killed'
@@ -21,6 +22,7 @@ export interface PTYSession {
   parentAgent?: string
   notifyOnExit: boolean
   buffer: RingBuffer
+  snapshot: TerminalSnapshot
   process: IPty | null
 }
 
@@ -37,6 +39,7 @@ export interface PTYSessionInfo {
   pid: number
   createdAt: string
   lineCount: number
+  size?: SnapshotState['size']
 }
 
 export interface SpawnOptions {
@@ -64,4 +67,9 @@ export interface SearchResult {
   totalLines: number
   offset: number
   hasMore: boolean
+}
+
+export interface SnapshotResult extends SnapshotState {
+  id: string
+  status: PTYStatus
 }

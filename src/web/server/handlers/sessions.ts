@@ -90,14 +90,13 @@ export function getRawBuffer(req: BunRequest<typeof routes.session.buffer.raw.pa
 }
 
 export function getPlainBuffer(req: BunRequest<typeof routes.session.buffer.plain.path>) {
-  const bufferData = manager.getRawBuffer(req.params.id)
-  if (!bufferData) {
+  const snapshot = manager.snapshot(req.params.id)
+  if (!snapshot) {
     return new ErrorResponse('Session not found', 404)
   }
 
-  const plainText = Bun.stripANSI(bufferData.raw)
   return new JsonResponse({
-    plain: plainText,
-    byteLength: new TextEncoder().encode(plainText).length,
+    plain: snapshot.text,
+    byteLength: new TextEncoder().encode(snapshot.text).length,
   })
 }

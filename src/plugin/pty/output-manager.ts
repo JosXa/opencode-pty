@@ -1,4 +1,4 @@
-import type { PTYSession, ReadResult, SearchResult } from './types.ts'
+import type { PTYSession, ReadResult, SearchResult, SnapshotResult } from './types.ts'
 
 export class OutputManager {
   write(session: PTYSession, data: string): boolean {
@@ -25,5 +25,13 @@ export class OutputManager {
       limit !== undefined ? allMatches.slice(offset, offset + limit) : allMatches.slice(offset)
     const hasMore = offset + paginatedMatches.length < totalMatches
     return { matches: paginatedMatches, totalMatches, totalLines, offset, hasMore }
+  }
+
+  snapshot(session: PTYSession): SnapshotResult {
+    return {
+      id: session.id,
+      status: session.status,
+      ...session.snapshot.getState(),
+    }
   }
 }
