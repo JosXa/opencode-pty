@@ -52,11 +52,11 @@ jobs:
             echo "tag_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Setup Node.js (for npm publish with provenance)
+      - name: Setup Node.js (for npm publish with OIDC trusted publishing)
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
@@ -136,4 +136,4 @@ jobs:
 
       - name: Publish to npm
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
-        run: npm publish --access public --provenance
+        run: npm publish --access public

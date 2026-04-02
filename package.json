@@ -3,7 +3,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
-  "version": "0.4.1",
+  "version": "0.4.2",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering, and capture terminal snapshots",
   "author": "josxa",
   "keywords": [
