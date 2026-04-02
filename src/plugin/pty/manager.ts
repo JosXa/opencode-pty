@@ -5,7 +5,15 @@ import { version as bunPtyVersion } from 'bun-pty/package.json'
 import { NotificationManager } from './notification-manager.ts'
 import { OutputManager } from './output-manager.ts'
 import { SessionLifecycleManager } from './session-lifecycle.ts'
-import type { PTYSessionInfo, ReadResult, SearchResult, SpawnOptions } from './types.ts'
+import type { SnapshotDiff, WaitCondition, WaitResult } from './snapshot.ts'
+import type {
+  PTYSessionInfo,
+  PTYStatus,
+  ReadResult,
+  SearchResult,
+  SnapshotResult,
+  SpawnOptions,
+} from './types.ts'
 import { withSession } from './utils.ts'
 
 // Monkey-patch bun-pty to fix race condition in _startReadLoop
@@ -157,6 +165,28 @@ class PTYManager {
       }),
       null
     )
+  }
+
+  snapshot(id: string): SnapshotResult | null {
+    return withSession(this.lifecycleManager, id, (session) => this.outputManager.snapshot(session), null)
+  }
+
+  snapshotDiff(id: string, sinceSeq: number): (SnapshotDiff & { id: string; status: PTYStatus }) | null {
+    return withSession(
+      this.lifecycleManager,
+      id,
+      (session) => this.outputManager.snapshotDiff(session, sinceSeq),
+      null
+    )
+  }
+
+  async snapshotWait(
+    id: string,
+    condition: WaitCondition
+  ): Promise<(WaitResult & { id: string; status: string }) | null> {
+    const session = this.lifecycleManager.getSession(id)
+    if (!session) return null
+    return this.outputManager.snapshotWait(session, condition)
   }
 
   kill(id: string, cleanup: boolean = false): boolean {

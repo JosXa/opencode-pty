@@ -1,0 +1,1 @@
+Captures the current visible terminal screen as clean text (ANSI-free) with cursor position, size, and a contentHash for change detection. Prefer over pty_read for TUI apps. Each snapshot has a seq number that increments on content changes. Pass `since` with a previous seq to get only changed lines instead of the full screen.

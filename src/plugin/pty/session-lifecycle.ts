@@ -1,5 +1,6 @@
 import { spawn, type IPty } from 'bun-pty'
 import { RingBuffer } from './buffer.ts'
+import { TerminalSnapshot } from './snapshot.ts'
 import type { PTYSession, PTYSessionInfo, SpawnOptions } from './types.ts'
 import { DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS } from '../constants.ts'
 
@@ -23,6 +24,7 @@ export class SessionLifecycleManager {
       opts.title ?? (`${opts.command} ${args.join(' ')}`.trim() || `Terminal ${id.slice(-4)}`)
 
     const buffer = new RingBuffer()
+    const snapshot = new TerminalSnapshot(DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS)
     return {
       id,
       title,
@@ -38,6 +40,7 @@ export class SessionLifecycleManager {
       parentAgent: opts.parentAgent,
       notifyOnExit: opts.notifyOnExit ?? false,
       buffer,
+      snapshot,
       process: null, // will be set
     }
   }
@@ -62,6 +65,7 @@ export class SessionLifecycleManager {
   ): void {
     session.process?.onData((data: string) => {
       session.buffer.append(data)
+      session.snapshot.write(data)
       onData(session, data)
     })
 
@@ -142,6 +146,8 @@ export class SessionLifecycleManager {
   }
 
   toInfo(session: PTYSession): PTYSessionInfo {
+    const snapshot = session.snapshot.getState()
+
     return {
       id: session.id,
       title: session.title,
@@ -155,6 +161,7 @@ export class SessionLifecycleManager {
       pid: session.pid,
       createdAt: session.createdAt.toISOString(),
       lineCount: session.buffer.length,
+      size: snapshot.size,
     }
   }
 }
