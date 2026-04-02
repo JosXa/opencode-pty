@@ -1,4 +1,5 @@
-import type { PTYSession, ReadResult, SearchResult, SnapshotResult } from './types.ts'
+import type { SnapshotDiff, WaitCondition, WaitResult } from './snapshot.ts'
+import type { PTYSession, PTYStatus, ReadResult, SearchResult, SnapshotResult } from './types.ts'
 
 export class OutputManager {
   write(session: PTYSession, data: string): boolean {
@@ -32,6 +33,30 @@ export class OutputManager {
       id: session.id,
       status: session.status,
       ...session.snapshot.getState(),
+    }
+  }
+
+  snapshotDiff(
+    session: PTYSession,
+    sinceSeq: number
+  ): SnapshotDiff & { id: string; status: PTYStatus } {
+    const diff = session.snapshot.getDiff(sinceSeq)
+    return {
+      ...diff,
+      id: session.id,
+      status: session.status,
+    }
+  }
+
+  async snapshotWait(
+    session: PTYSession,
+    condition: WaitCondition
+  ): Promise<WaitResult & { id: string; status: PTYSession['status'] }> {
+    const result = await session.snapshot.waitForCondition(condition)
+    return {
+      ...result,
+      id: session.id,
+      status: session.status,
     }
   }
 }

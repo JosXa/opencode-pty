@@ -1,0 +1,1 @@
+Blocks until the PTY screen matches a condition: text search (regex) or screen stability (hash unchanged for N ms). Returns the matching snapshot. Use instead of polling pty_snapshot in a loop.
