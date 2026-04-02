@@ -1,5 +1,5 @@
+import type { PTYSessionInfo } from '@josxa/opencode-pty/web/shared/types'
 import { useCallback } from 'react'
-import type { PTYSessionInfo } from 'opencode-pty/web/shared/types'
 
 import { api } from '../../shared/api-client'
 

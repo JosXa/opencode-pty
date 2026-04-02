@@ -1,4 +1,4 @@
-import type { PTYSessionInfo } from 'opencode-pty/web/shared/types'
+import type { PTYSessionInfo } from '@josxa/opencode-pty/web/shared/types'
 
 interface SidebarProps {
   sessions: PTYSessionInfo[]

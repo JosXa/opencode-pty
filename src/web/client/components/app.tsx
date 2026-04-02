@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { PTYSessionInfo } from 'opencode-pty/web/shared/types'
-
-import { useWebSocket } from '../hooks/use-web-socket.ts'
+import type { PTYSessionInfo } from '@josxa/opencode-pty/web/shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import { api } from '../../shared/api-client.ts'
 import { useSessionManager } from '../hooks/use-session-manager.ts'
-
+import { useWebSocket } from '../hooks/use-web-socket.ts'
 import { Sidebar } from './sidebar.tsx'
 import { RawTerminal } from './terminal-renderer.tsx'
-import { api } from '../../shared/api-client.ts'
 
 export function App() {
   const [sessions, setSessions] = useState<PTYSessionInfo[]>([])

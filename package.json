@@ -1,11 +1,11 @@
 {
-  "name": "opencode-pty",
+  "name": "@josxa/opencode-pty",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
-  "version": "0.3.1",
-  "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering",
-  "author": "shekohex",
+  "version": "0.4.0",
+  "description": "OpenCode plugin for interactive PTY management - run background processes, send input, read output with regex filtering, and capture terminal snapshots",
+  "author": "josxa",
   "keywords": [
     "opencode",
     "opencode-plugin",
@@ -21,12 +21,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shekohex/opencode-pty.git"
+    "url": "git+https://github.com/JosXa/opencode-pty.git"
   },
   "bugs": {
-    "url": "https://github.com/shekohex/opencode-pty/issues"
+    "url": "https://github.com/JosXa/opencode-pty/issues"
   },
-  "homepage": "https://github.com/shekohex/opencode-pty#readme",
+  "homepage": "https://github.com/JosXa/opencode-pty#readme",
   "files": [
     "dist"
   ],

@@ -52,6 +52,13 @@ jobs:
             echo "tag_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Setup Node.js (for npm publish with provenance)
+        if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Install dependencies
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
         run: bun ci
@@ -98,7 +105,7 @@ jobs:
             printf '%s\n' '```json'
             printf '%s\n' '{'
             printf '%s\n' '  "$schema": "https://opencode.ai/config.json",'
-            printf '%s\n' '  "plugin": ["opencode-pty"]'
+            printf '%s\n' '  "plugin": ["@josxa/opencode-pty"]'
             printf '%s\n' '}'
             printf '%s\n' '```'
             echo ""
@@ -107,7 +114,7 @@ jobs:
             echo "To get the latest version:"
             echo ""
             printf '%s\n' '```bash'
-            printf '%s\n' 'rm -rf ~/.cache/opencode/node_modules/opencode-pty'
+            printf '%s\n' 'rm -rf ~/.cache/opencode/packages/@josxa+opencode-pty*'
             printf '%s\n' 'opencode'
             printf '%s\n' '```'
           } >"$BODY_FILE"
@@ -130,3 +137,5 @@ jobs:
       - name: Publish to npm
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
         run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

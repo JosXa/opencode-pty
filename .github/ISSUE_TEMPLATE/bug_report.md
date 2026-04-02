@@ -42,7 +42,7 @@ A clear and concise description of what actually happens.
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-pty"],
+  "plugin": ["@josxa/opencode-pty"],
   "permission": {
     // your permission config
   }

@@ -37,7 +37,7 @@ Add the plugin to your [OpenCode config](https://opencode.ai/docs/config/):
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["opencode-pty"]
+  "plugin": ["@josxa/opencode-pty"]
 }
 ```
 
@@ -50,7 +50,7 @@ OpenCode automatically checks for and installs plugin updates on startup. You do
 If you ever need to force a clean reinstall, you can clear the cache:
 
 ```bash
-rm -rf ~/.cache/opencode/node_modules/opencode-pty
+rm -rf ~/.cache/opencode/packages/@josxa+opencode-pty*
 opencode
 ```
 

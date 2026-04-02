@@ -1,6 +1,6 @@
-import { test as extendedTest, expect } from './fixtures'
+import type { createApiClient } from '@josxa/opencode-pty/web/shared/api-client'
 import type { Page } from '@playwright/test'
-import type { createApiClient } from 'opencode-pty/web/shared/api-client'
+import { expect, test as extendedTest } from './fixtures'
 
 /**
  * Session and Terminal Helpers for E2E buffer extension tests
