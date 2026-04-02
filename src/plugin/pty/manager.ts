@@ -168,10 +168,18 @@ class PTYManager {
   }
 
   snapshot(id: string): SnapshotResult | null {
-    return withSession(this.lifecycleManager, id, (session) => this.outputManager.snapshot(session), null)
+    return withSession(
+      this.lifecycleManager,
+      id,
+      (session) => this.outputManager.snapshot(session),
+      null
+    )
   }
 
-  snapshotDiff(id: string, sinceSeq: number): (SnapshotDiff & { id: string; status: PTYStatus }) | null {
+  snapshotDiff(
+    id: string,
+    sinceSeq: number
+  ): (SnapshotDiff & { id: string; status: PTYStatus }) | null {
     return withSession(
       this.lifecycleManager,
       id,
