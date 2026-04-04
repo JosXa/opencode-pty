@@ -33,6 +33,10 @@
   "license": "MIT",
   "type": "module",
   "exports": {
+    "./server": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
