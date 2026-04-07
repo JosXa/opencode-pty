@@ -1,9 +1,9 @@
 {
   "name": "@josxa/opencode-pty",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "module": "dist/index.js",
-  "version": "0.4.2",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "version": "0.4.3",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -88,7 +88,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "opencode": ">=1.3.13"
+    "opencode": ">=1.3.12"
   },
   "dependencies": {
     "@opencode-ai/plugin": "^1.3.13",
