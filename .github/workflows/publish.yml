@@ -2,7 +2,7 @@ name: Release
 
 on:
   workflow_run:
-    workflows: ['CI']
+    workflows: ["CI"]
     types:
       - completed
     branches: [main]
@@ -56,8 +56,8 @@ jobs:
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
@@ -119,18 +119,14 @@ jobs:
             printf '%s\n' '```'
           } >"$BODY_FILE"
           cat "$BODY_FILE"
-          {
-            echo "body<<EOF"
-            cat "$BODY_FILE"
-            echo "EOF"
-          } >>"$GITHUB_OUTPUT"
+          echo "body_file=$BODY_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         if: steps.determine.outputs.changed == 'true' && steps.determine.outputs.tag_exists == 'false'
         run: |
           gh release create "v${{ steps.determine.outputs.current_version }}" \
             --title "v${{ steps.determine.outputs.current_version }}" \
-            --notes "${{ steps.release_notes.outputs.body }}"
+            --notes-file "${{ steps.release_notes.outputs.body_file }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
