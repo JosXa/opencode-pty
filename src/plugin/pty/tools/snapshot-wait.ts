@@ -43,7 +43,7 @@ export const ptySnapshotWait = tool({
       throw buildSessionNotFoundError(args.id)
     }
 
-    const status = result.matched ? 'matched' : 'timed_out'
+    const status = result.exited ? 'exited' : result.matched ? 'matched' : 'timed_out'
 
     // If since was provided, return diff format
     if (args.since != null) {

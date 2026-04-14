@@ -25,7 +25,13 @@ export class OutputManager {
     const paginatedMatches =
       limit !== undefined ? allMatches.slice(offset, offset + limit) : allMatches.slice(offset)
     const hasMore = offset + paginatedMatches.length < totalMatches
-    return { matches: paginatedMatches, totalMatches, totalLines, offset, hasMore }
+    return {
+      matches: paginatedMatches,
+      totalMatches,
+      totalLines,
+      offset,
+      hasMore,
+    }
   }
 
   snapshot(session: PTYSession): SnapshotResult {
@@ -52,7 +58,10 @@ export class OutputManager {
     session: PTYSession,
     condition: WaitCondition
   ): Promise<WaitResult & { id: string; status: PTYSession['status'] }> {
-    const result = await session.snapshot.waitForCondition(condition)
+    const result = await session.snapshot.waitForCondition({
+      ...condition,
+      exit: () => session.status !== 'running',
+    })
     return {
       ...result,
       id: session.id,

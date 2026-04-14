@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:tes
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
+import { ptySnapshotWait } from '../src/plugin/pty/tools/snapshot-wait.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
 import { manager } from '../src/plugin/pty/manager.ts'
 
@@ -276,6 +277,49 @@ describe('PTY Tools', () => {
       )
 
       expect(result).toBe('<pty_list>\nNo active PTY sessions.\n</pty_list>')
+    })
+  })
+
+  describe('ptySnapshotWait', () => {
+    it('should return exited when the PTY has already exited', async () => {
+      spyOn(manager, 'snapshotWait').mockResolvedValue({
+        id: 'test-session-id',
+        status: 'exited',
+        matched: false,
+        exited: true,
+        waitedMs: 12,
+        state: {
+          size: { cols: 120, rows: 40 },
+          cursor: { row: 0, col: 0, visible: true },
+          text: 'done',
+          contentHash: 'abc123',
+          seq: 1,
+          lines: ['done'],
+        },
+      })
+
+      const result = await ptySnapshotWait.execute(
+        { id: 'test-session-id', search: 'READY', timeout: 1000 },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
+        search: /READY/,
+        hashStableMs: undefined,
+        timeoutMs: 1000,
+      })
+      expect(result).toContain('result="exited"')
+      expect(result).toContain('status="exited"')
+      expect(result).toContain('done')
     })
   })
 

@@ -56,6 +56,8 @@ export interface WaitCondition {
   hashStableMs?: number
   /** Maximum time to wait before giving up (default: 30000). */
   timeoutMs?: number
+  /** Return early when the PTY exits before another condition matches. */
+  exit?: () => boolean
 }
 
 export interface WaitResult {
@@ -65,6 +67,8 @@ export interface WaitResult {
   waitedMs: number
   /** The snapshot state at the moment of match or timeout. */
   state: SnapshotState
+  /** True when the PTY exited before another condition matched. */
+  exited?: boolean
 }
 
 /** Stored frame in the history ring buffer. */
@@ -204,6 +208,15 @@ export class TerminalSnapshot {
     const check = (): WaitResult | null => {
       const state = this.cachedState
 
+      if (condition.exit?.()) {
+        return {
+          matched: false,
+          waitedMs: Date.now() - start,
+          state,
+          exited: true,
+        }
+      }
+
       // search condition
       if (condition.search && condition.search.test(state.text)) {
         return { matched: true, waitedMs: Date.now() - start, state }
@@ -310,7 +323,12 @@ function computeLineDiff(oldLines: string[], newLines: string[]): LineDiff[] {
       }
     } else if (oldLine !== newLine) {
       // Content changed
-      changes.push({ line: i, type: 'changed', content: newLine, old: oldLine })
+      changes.push({
+        line: i,
+        type: 'changed',
+        content: newLine,
+        old: oldLine,
+      })
     }
   }
 
