@@ -1,14 +1,47 @@
-{ pkgs, ... }:
-{
-  # https://devenv.sh/packages/
-  packages = with pkgs; [
-    git
-    bashInteractive
-    biome
+{ pkgs, lib, ... }:
+let
+  runtimeLibraries = with pkgs; [
+    alsa-lib
+    atk
+    cairo
+    dbus
+    expat
+    fontconfig
+    freetype
+    gdk-pixbuf
+    glib
+    gtk3
+    libdrm
+    libxkbcommon
+    nspr
+    nss
+    pango
+    stdenv.cc.cc
+    xorg.libX11
+    xorg.libXcomposite
+    xorg.libXcursor
+    xorg.libXdamage
+    xorg.libXext
+    xorg.libXfixes
+    xorg.libXi
+    xorg.libXrandr
+    xorg.libXrender
+    xorg.libxcb
   ];
+in {
+  # https://devenv.sh/packages/
+  packages =
+    with pkgs;
+    [
+      git
+      bashInteractive
+      biome
+    ]
+    ++ runtimeLibraries;
 
   env = with pkgs; {
     BIOME_BINARY="${biome}/bin/biome";
+    LD_LIBRARY_PATH = lib.makeLibraryPath runtimeLibraries;
   };
 
   # https://devenv.sh/languages/
