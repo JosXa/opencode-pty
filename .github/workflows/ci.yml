@@ -79,6 +79,9 @@ jobs:
       - name: Build (Devenv shell)
         run: devenv shell -- bun build:prod
 
+      - name: Install Playwright Browsers (Devenv shell)
+        run: devenv shell -- env PLAYWRIGHT_BROWSERS_PATH=0 bunx playwright install chromium firefox
+
       - name: Quality checks (bun test)
         run: devenv shell -- bun unittest
       - name: Quality checks (typecheck)
@@ -88,4 +91,4 @@ jobs:
       - name: Quality checks (format)
         run: devenv shell -- bun format
       - name: Quality checks (test:e2e)
-        run: devenv shell -- bun test:e2e
+        run: devenv shell -- env PLAYWRIGHT_BROWSERS_PATH=0 bun test:e2e

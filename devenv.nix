@@ -1,30 +1,12 @@
 {
-  pkgs,
-  lib,
-  config,
-  inputs,
-  ...
-}:
-
-let
-  browsers =
-    (builtins.fromJSON (builtins.readFile "${pkgs.playwright-driver}/browsers.json")).browsers;
-  chromium-rev = (builtins.head (builtins.filter (x: x.name == "chromium") browsers)).revision;
-  firefox-rev = (builtins.head (builtins.filter (x: x.name == "firefox") browsers)).revision;
-in
-{
   # https://devenv.sh/packages/
   packages = with pkgs; [
     git
     bashInteractive
     biome
-    playwright-driver.browsers
   ];
 
   env = with pkgs; {
-    PLAYWRIGHT_BROWSERS_PATH = "${playwright-driver.browsers}";
-    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${playwright-driver.browsers}/chromium-${chromium-rev}/chrome-linux64/chrome";
-    PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH = "${playwright-driver.browsers}/firefox-${firefox-rev}/firefox/firefox";
     BIOME_BINARY="${biome}/bin/biome";
   };
 
