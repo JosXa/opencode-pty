@@ -2,8 +2,10 @@ import type { PTYSession } from './types.ts'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { NOTIFICATION_LINE_TRUNCATE, NOTIFICATION_TITLE_TRUNCATE } from '../constants.ts'
 
-const OSC_SEQUENCE_REGEX = /\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)/g
-const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g
+// biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for ANSI sequences.
+const OSC_SEQUENCE_REGEX = new RegExp('\\u001b\\][^\\u0007\\u001b]*(?:\\u0007|\\u001b\\\\)', 'g')
+// biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for control-char ranges.
+const CONTROL_CHARS_REGEX = new RegExp('[\\u0000-\\u0008\\u000b-\\u001f\\u007f-\\u009f]', 'g')
 const WHITESPACE_REGEX = /\s+/g
 
 function sanitizeNotificationLine(line: string): string {

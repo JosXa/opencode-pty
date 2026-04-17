@@ -48,6 +48,17 @@ function createBufferSession(lines: string[], overrides: Partial<PTYSession> = {
   return createSession({ buffer, ...overrides })
 }
 
+function getPromptPayload(
+  promptAsync: ReturnType<typeof mock<(_: PromptPayload) => Promise<void>>>
+): PromptPayload {
+  expect(promptAsync).toHaveBeenCalledTimes(1)
+
+  const payload = promptAsync.mock.calls[0]?.[0]
+  expect(payload).toBeDefined()
+
+  return payload as PromptPayload
+}
+
 describe('NotificationManager', () => {
   it('includes body.agent when originating agent is present', async () => {
     const promptAsync = mock(async (_payload: PromptPayload) => {})
@@ -57,8 +68,7 @@ describe('NotificationManager', () => {
 
     await manager.sendExitNotification(createSession({ parentAgent: 'agent-two' }), 0)
 
-    expect(promptAsync).toHaveBeenCalledTimes(1)
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = getPromptPayload(promptAsync)
 
     expect(payload.path).toEqual({ id: 'parent-session-id' })
     expect(payload.body.agent).toBe('agent-two')
@@ -75,8 +85,7 @@ describe('NotificationManager', () => {
 
     await manager.sendExitNotification(createSession({ parentAgent: undefined }), 1)
 
-    expect(promptAsync).toHaveBeenCalledTimes(1)
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = getPromptPayload(promptAsync)
 
     expect(payload.path).toEqual({ id: 'parent-session-id' })
     expect(Object.hasOwn(payload.body, 'agent')).toBe(false)
@@ -101,7 +110,7 @@ describe('NotificationManager', () => {
       0
     )
 
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = getPromptPayload(promptAsync)
     const text = payload.body.parts[0]?.text ?? ''
 
     expect(text).toContain('Last Line: 19:40:47 backend.1 | warning status link')
@@ -121,7 +130,7 @@ describe('NotificationManager', () => {
       0
     )
 
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = getPromptPayload(promptAsync)
     const text = payload.body.parts[0]?.text ?? ''
 
     expect(text).toContain('Last Line: still here')
@@ -142,7 +151,7 @@ describe('NotificationManager', () => {
       0
     )
 
-    const payload = promptAsync.mock.calls[0]![0]
+    const payload = getPromptPayload(promptAsync)
     const text = payload.body.parts[0]?.text ?? ''
 
     expect(text).not.toContain('Last Line:')

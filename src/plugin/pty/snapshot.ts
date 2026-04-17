@@ -162,7 +162,10 @@ export class TerminalSnapshot {
       // History truncated or invalid seq - return full state as "all added"
       const changes: LineDiff[] = []
       for (let i = 0; i < current.lines.length; i++) {
-        const content = current.lines[i]!
+        const content = current.lines[i]
+        if (content === undefined) {
+          continue
+        }
         if (content.trim()) {
           changes.push({ line: i, type: 'added', content })
         }
@@ -218,7 +221,7 @@ export class TerminalSnapshot {
       }
 
       // search condition
-      if (condition.search && condition.search.test(state.text)) {
+      if (condition.search?.test(state.text)) {
         return { matched: true, waitedMs: Date.now() - start, state }
       }
 
