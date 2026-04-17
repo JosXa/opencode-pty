@@ -38,6 +38,16 @@ function createSession(overrides: Partial<PTYSession> = {}): PTYSession {
   }
 }
 
+function createBufferSession(lines: string[], overrides: Partial<PTYSession> = {}): PTYSession {
+  const buffer = new RingBuffer()
+  buffer.append(lines.join('\n'))
+  if (lines.length > 0) {
+    buffer.append('\n')
+  }
+
+  return createSession({ buffer, ...overrides })
+}
+
 describe('NotificationManager', () => {
   it('includes body.agent when originating agent is present', async () => {
     const promptAsync = mock(async (_payload: PromptPayload) => {})
@@ -75,5 +85,67 @@ describe('NotificationManager', () => {
     expect(payload.body.parts[0]?.text).toContain(
       'Process failed. Use pty_read with the pattern parameter to search for errors in the output.'
     )
+  })
+
+  it('sanitizes the last line before including it in notifications', async () => {
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(
+      createBufferSession([
+        'plain line',
+        '\u001b[33m19:40:47 backend.1 | warning\u001b[39m\rstatus \u001b]8;;https://example.com\u0007link\u001b]8;;\u0007\u0007',
+      ]),
+      0
+    )
+
+    const payload = promptAsync.mock.calls[0]![0]
+    const text = payload.body.parts[0]?.text ?? ''
+
+    expect(text).toContain('Last Line: 19:40:47 backend.1 | warning status link')
+    expect(text).not.toContain('\u001b')
+    expect(text).not.toContain('\r')
+    expect(text).not.toContain(']8;;')
+  })
+
+  it('falls back to the previous non-empty line when the trailing line sanitizes away', async () => {
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(
+      createBufferSession(['still here', '\u001b[31m\u001b[0m\u0007\r\n']),
+      0
+    )
+
+    const payload = promptAsync.mock.calls[0]![0]
+    const text = payload.body.parts[0]?.text ?? ''
+
+    expect(text).toContain('Last Line: still here')
+    expect(text).toContain('Output Lines: 3')
+  })
+
+  it('omits the last line when no buffer line survives sanitization', async () => {
+    const promptAsync = mock(async (_payload: PromptPayload) => {})
+    const manager = new NotificationManager()
+
+    manager.init({ session: { promptAsync } } as unknown as OpencodeClient)
+
+    await manager.sendExitNotification(
+      createBufferSession([
+        '\u001b[31m\u001b[0m',
+        '\u001b]8;;https://example.com\u0007\u001b]8;;\u0007',
+      ]),
+      0
+    )
+
+    const payload = promptAsync.mock.calls[0]![0]
+    const text = payload.body.parts[0]?.text ?? ''
+
+    expect(text).not.toContain('Last Line:')
+    expect(text).toContain('Output Lines: 2')
   })
 })

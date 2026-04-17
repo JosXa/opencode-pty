@@ -53,3 +53,8 @@ devenv.local.yaml
 
 # pre-commit
 .pre-commit-config.yaml
+
+# OpenCode scratch files
+.opencode/pr-*-*.md
+.opencode/pr-*-*.json
+.opencode/release-v*-notes.md
