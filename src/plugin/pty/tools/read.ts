@@ -14,6 +14,12 @@ interface ReadArgs {
   ignoreCase?: boolean
 }
 
+// biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for terminal sequences.
+const OSC_SEQUENCE_REGEX = new RegExp('\\u001b\\][^\\u0007\\u001b]*(?:\\u0007|\\u001b\\\\)')
+// biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for terminal sequences.
+const CSI_SEQUENCE_REGEX = new RegExp('\\u001b\\[[0-?]*[ -/]*[@-~]', 'g')
+const SNAPSHOT_HINT = 'Control chars escaped. Use pty_snapshot for accurate rendering.'
+
 /**
  * Formats PTY output with XML tags and pagination
  */
@@ -34,6 +40,23 @@ function formatPtyOutput(
     `</pty_output>`,
   ]
   return output.join('\n')
+}
+
+function hasTuiControlSequences(line: string): boolean {
+  if (line.includes('\r') || OSC_SEQUENCE_REGEX.test(line)) {
+    return true
+  }
+
+  const csiMatches = line.match(CSI_SEQUENCE_REGEX)
+  if (!csiMatches) {
+    return false
+  }
+
+  return csiMatches.some((sequence) => sequence.at(-1)?.toLowerCase() !== 'm')
+}
+
+function appendSnapshotHint(message: string, lines: string[]): string {
+  return lines.some(hasTuiControlSequences) ? `${message} ${SNAPSHOT_HINT}` : message
 }
 
 /**
@@ -94,8 +117,14 @@ function handlePatternRead(
     pattern,
     formattedLines,
     result.hasMore,
-    paginationMessage,
-    endMessage
+    appendSnapshotHint(
+      paginationMessage,
+      result.matches.map((match) => match.text)
+    ),
+    appendSnapshotHint(
+      endMessage,
+      result.matches.map((match) => match.text)
+    )
   )
 }
 
@@ -135,8 +164,8 @@ function handlePlainRead(
     undefined,
     formattedLines,
     result.hasMore,
-    paginationMessage,
-    endMessage
+    appendSnapshotHint(paginationMessage, result.lines),
+    appendSnapshotHint(endMessage, result.lines)
   )
 }
 

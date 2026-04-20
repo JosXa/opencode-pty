@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:tes
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
+import { ptySnapshot } from '../src/plugin/pty/tools/snapshot.ts'
 import { ptySnapshotWait } from '../src/plugin/pty/tools/snapshot-wait.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
 import { manager } from '../src/plugin/pty/manager.ts'
@@ -156,6 +157,61 @@ describe('PTY Tools', () => {
       expect(result).toContain('00002| line 2')
       expect(result).toContain('(End of buffer - total 2 lines)')
       expect(result).toContain('</pty_output>')
+    })
+
+    it('should escape control bytes before rendering tool output', async () => {
+      spyOn(manager, 'read').mockReturnValue({
+        lines: ['\u001b[31mRed\u001b[0m\ttest\r'],
+        offset: 0,
+        hasMore: false,
+        totalLines: 1,
+      })
+
+      const args = { id: 'test-session-id' }
+      const ctx = {
+        sessionID: 'parent',
+        messageID: 'msg',
+        agent: 'agent',
+        abort: new AbortController().signal,
+        metadata: () => {},
+        ask: async () => {},
+        directory: '/tmp',
+        worktree: '/tmp',
+      }
+
+      const result = await ptyRead.execute(args, ctx)
+
+      expect(result).toContain('00001| \\x1b[31mRed\\x1b[0m\\ttest\\r')
+      expect(result).not.toContain('\u001b[31m')
+      expect(result).toContain('Control chars escaped. Use pty_snapshot for accurate rendering.')
+    })
+
+    it('should not add the snapshot hint for plain color output', async () => {
+      spyOn(manager, 'read').mockReturnValue({
+        lines: ['\u001b[31mRed\u001b[0m'],
+        offset: 0,
+        hasMore: false,
+        totalLines: 1,
+      })
+
+      const args = { id: 'test-session-id' }
+      const ctx = {
+        sessionID: 'parent',
+        messageID: 'msg',
+        agent: 'agent',
+        abort: new AbortController().signal,
+        metadata: () => {},
+        ask: async () => {},
+        directory: '/tmp',
+        worktree: '/tmp',
+      }
+
+      const result = await ptyRead.execute(args, ctx)
+
+      expect(result).toContain('00001| \\x1b[31mRed\\x1b[0m')
+      expect(result).not.toContain(
+        'Control chars escaped. Use pty_snapshot for accurate rendering.'
+      )
     })
 
     it('should read with pattern', async () => {
@@ -320,6 +376,103 @@ describe('PTY Tools', () => {
       expect(result).toContain('result="exited"')
       expect(result).toContain('status="exited"')
       expect(result).toContain('done')
+    })
+
+    it('should right-align diff line numbers in changed-line output', async () => {
+      spyOn(manager, 'snapshotWait').mockResolvedValue({
+        id: 'test-session-id',
+        status: 'running',
+        matched: true,
+        exited: false,
+        waitedMs: 0,
+        state: {
+          size: { cols: 120, rows: 40 },
+          cursor: { row: 20, col: 27, visible: true },
+          text: 'screen',
+          contentHash: 'hash123',
+          seq: 13,
+          lines: [],
+        },
+      })
+      spyOn(manager, 'snapshotDiff').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        sinceSeq: 12,
+        historyTruncated: false,
+        state: {
+          size: { cols: 120, rows: 40 },
+          cursor: { row: 20, col: 27, visible: true },
+          text: 'screen',
+          contentHash: 'hash123',
+          seq: 13,
+          lines: [],
+        },
+        changes: [
+          { line: 9, type: 'changed', content: '#restate' },
+          { line: 10, type: 'added', content: '#scout' },
+          { line: 118, type: 'removed', old: '#done' },
+        ],
+      })
+
+      const result = await ptySnapshotWait.execute(
+        { id: 'test-session-id', hashStableMs: 500, timeout: 4000, since: 12 },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(result).toContain('   9: #restate')
+      expect(result).toContain('  10: [+] #scout')
+      expect(result).toContain(' 118: [removed] #done')
+    })
+  })
+
+  describe('ptySnapshot', () => {
+    it('should right-align diff line numbers in changed-line output', async () => {
+      spyOn(manager, 'snapshotDiff').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        sinceSeq: 12,
+        historyTruncated: false,
+        state: {
+          size: { cols: 120, rows: 40 },
+          cursor: { row: 20, col: 27, visible: true },
+          text: 'screen',
+          contentHash: 'hash123',
+          seq: 13,
+          lines: [],
+        },
+        changes: [
+          { line: 9, type: 'changed', content: '#restate' },
+          { line: 10, type: 'added', content: '#scout' },
+          { line: 118, type: 'removed', old: '#done' },
+        ],
+      })
+
+      const result = await ptySnapshot.execute(
+        { id: 'test-session-id', since: 12 },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(result).toContain('   9: #restate')
+      expect(result).toContain('  10: [+] #scout')
+      expect(result).toContain(' 118: [removed] #done')
     })
   })
 

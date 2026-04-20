@@ -11,6 +11,7 @@ Usage:
 
 Returns:
 - Numbered lines of output (similar to cat -n format)
+- Non-printable control bytes are escaped in the tool result so chat UIs can render the output safely
 - Total line count in the buffer
 - Indicator if more lines are available
 

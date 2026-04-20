@@ -1,4 +1,5 @@
 import { tool } from '@opencode-ai/plugin'
+import { formatSnapshotDiffLines } from '../formatters.ts'
 import { manager } from '../manager.ts'
 import { buildSessionNotFoundError } from '../utils.ts'
 import DESCRIPTION from './snapshot.txt'
@@ -29,11 +30,7 @@ export const ptySnapshot = tool({
         ].join('\n')
       }
 
-      const changeLines = diff.changes.map((c) => {
-        if (c.type === 'removed') return `  ${c.line}: [removed] ${c.old}`
-        if (c.type === 'added') return `  ${c.line}: [+] ${c.content}`
-        return `  ${c.line}: ${c.content}`
-      })
+      const changeLines = formatSnapshotDiffLines(diff.changes)
 
       const parts = [
         `<pty_snapshot id="${diff.id}" status="${diff.status}" seq="${diff.state.seq}" hash="${diff.state.contentHash}" since="${diff.sinceSeq}"${diff.historyTruncated ? ' historyTruncated="true"' : ''}>`,

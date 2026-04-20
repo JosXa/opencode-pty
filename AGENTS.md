@@ -44,4 +44,6 @@ Compare biome output against `git diff --name-only` to determine which files you
 
 This package ships pre-compiled JS via `dist/`. The `prepublishOnly` script runs `bun build:prod` which does `bun clean && bun build:plugin && vite build --mode production`.
 
+IMPORTANT: after any code change, MUST run `bun run build:dev` before finishing the task.
+
 The `clean` script uses `rm -rf` which fails on Windows. Use PowerShell `Remove-Item` instead if cleaning locally.

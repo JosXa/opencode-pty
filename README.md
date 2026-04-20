@@ -60,7 +60,7 @@ opencode
 | -------------------- | --------------------------------------------------------------------------- |
 | `pty_spawn`          | Create a new PTY session (command, args, workdir, env, title, notifyOnExit) |
 | `pty_write`          | Send input to a PTY (text, escape sequences like `\x03` for Ctrl+C)        |
-| `pty_read`           | Read raw output buffer with pagination and optional regex filtering         |
+| `pty_read`           | Read PTY output buffer as chat-safe text with pagination and regex filtering |
 | `pty_snapshot`       | Capture parsed terminal screen as clean text with cursor, size, and hash    |
 | `pty_snapshot_wait`  | Block until screen matches a regex or content stabilizes                    |
 | `pty_list`           | List all PTY sessions with status, PID, line count                          |
@@ -224,7 +224,7 @@ This eliminates the need for polling -- perfect for long-running processes like 
 
 ### Capture a clean terminal snapshot
 
-`pty_read` returns raw output including ANSI escape sequences, which is fine for line-oriented programs like `npm install`. But for TUI apps (interactive UIs with cursor movement, colors, screen clearing), the raw buffer is an unreadable flood of control codes. `pty_snapshot` solves this:
+`pty_read` returns buffer lines in a chat-safe text form. Non-printable control bytes are escaped so the tool output does not break the UI, but TUI programs still remain hard to interpret because cursor movement and screen control sequences are only shown literally. For TUI apps (interactive UIs with cursor movement, colors, screen clearing), `pty_snapshot` solves this:
 
 ```
 pty_snapshot: id="pty_a1b2c3d4"
