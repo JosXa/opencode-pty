@@ -1,1 +1,7 @@
-Blocks until the PTY screen matches a condition: text search (regex) or screen stability (hash unchanged for N ms). Returns the matching snapshot. Use instead of polling pty_snapshot in a loop.
+Block until the PTY screen matches a condition, then return a snapshot. Use instead of polling `pty_snapshot`.
+
+Provide at least one condition. If both are given, the first to match wins:
+- `search`: regex tested against the full rendered screen text
+- `hashStableMs`: rendered screen hash unchanged for N ms
+
+Returns on match, timeout, or PTY exit. `since` only formats the returned output as a diff and does not affect the wait condition.

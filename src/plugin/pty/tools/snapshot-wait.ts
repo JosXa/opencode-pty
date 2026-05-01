@@ -11,12 +11,12 @@ export const ptySnapshotWait = tool({
     search: tool.schema
       .string()
       .optional()
-      .describe('Regex pattern to match against screen text. Resolves on first match.'),
+      .describe('Regex tested against the full rendered screen text. Resolves on first match.'),
     hashStableMs: tool.schema
       .number()
       .optional()
       .describe(
-        'Wait until the screen content hash is unchanged for this many milliseconds (e.g., 2000 for "screen settled").'
+        'Resolve when the rendered screen hash is unchanged for this many ms (e.g., 2000 for "screen settled"). If combined with search, the first match wins.'
       ),
     timeout: tool.schema
       .number()
@@ -26,7 +26,7 @@ export const ptySnapshotWait = tool({
       .number()
       .optional()
       .describe(
-        'Sequence number to diff against. When provided, returns only changed lines since that seq instead of full screen.'
+        'Sequence number used only to format the returned snapshot as a diff against that seq. Does not affect when the wait resolves.'
       ),
   },
   async execute(args) {

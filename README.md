@@ -242,17 +242,17 @@ pty_snapshot: id="pty_a1b2c3d4", since=5
 
 ### Wait for specific screen content
 
-Instead of polling in a loop, use `pty_snapshot_wait` to block until a condition is met:
+Use `pty_snapshot_wait` to block until a condition is met instead of polling:
 
 ```
 pty_snapshot_wait: id="pty_a1b2c3d4", search="error|Error", timeout=30000
-→ Blocks until "error" or "Error" appears on screen, or times out
+→ Resolves when the regex matches the full rendered screen text
 
 pty_snapshot_wait: id="pty_a1b2c3d4", hashStableMs=2000, timeout=30000
-→ Blocks until screen content is unchanged for 2 seconds (useful for "wait until done")
+→ Resolves when screen content is unchanged for 2 seconds
 ```
 
-Both parameters can be combined with `since` to get a diff on return.
+When both `search` and `hashStableMs` are given, the first to match wins. `since` only changes the response to a diff against that seq and does not affect when the wait resolves.
 
 ### Example: Debugging OpenCode itself
 

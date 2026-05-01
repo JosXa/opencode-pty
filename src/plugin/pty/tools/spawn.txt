@@ -1,7 +1,7 @@
 Spawns a new interactive PTY (pseudo-terminal) session that runs in the background.
 
 Unlike the built-in bash tool which runs commands synchronously and waits for completion, PTY sessions persist and allow you to:
-- Run long-running processes (dev servers, watch modes, etc.)
+- Run long-running or timing-sensitive processes (dev servers, watch modes, quick timing checks, etc.)
 - Send interactive input (including Ctrl+C, arrow keys, etc.)
 - Read output at any time
 - Manage multiple concurrent terminal sessions

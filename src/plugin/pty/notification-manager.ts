@@ -2,6 +2,8 @@ import type { PTYSession } from './types.ts'
 import type { OpencodeClient } from '@opencode-ai/sdk'
 import { NOTIFICATION_LINE_TRUNCATE, NOTIFICATION_TITLE_TRUNCATE } from '../constants.ts'
 
+const FAST_EXIT_INTERRUPT_MS = 2_000
+
 // biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for ANSI sequences.
 const OSC_SEQUENCE_REGEX = new RegExp('\\u001b\\][^\\u0007\\u001b]*(?:\\u0007|\\u001b\\\\)', 'g')
 // biome-ignore lint/complexity/useRegexLiterals: string form avoids control-character regex lint for control-char ranges.
@@ -25,6 +27,38 @@ function sanitizeNotificationLine(line: string): string {
     : sanitized
 }
 
+function getElapsedMs(session: PTYSession): number {
+  return Math.max(0, Date.now() - session.createdAt.getTime())
+}
+
+function isQuickInterrupt(elapsedMs: number): boolean {
+  return elapsedMs <= FAST_EXIT_INTERRUPT_MS
+}
+
+function formatElapsed(elapsedMs: number): string {
+  if (elapsedMs < 1_000) {
+    return `${Math.round(elapsedMs)}ms`
+  }
+
+  if (elapsedMs < 10_000) {
+    return `${(elapsedMs / 1_000).toFixed(3)}s`
+  }
+
+  if (elapsedMs < 60_000) {
+    return `${(elapsedMs / 1_000).toFixed(2)}s`
+  }
+
+  if (elapsedMs < 600_000) {
+    return `${(elapsedMs / 1_000).toFixed(1)}s`
+  }
+
+  const totalSeconds = Math.round(elapsedMs / 1_000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+
+  return `${minutes}m ${seconds}s`
+}
+
 export class NotificationManager {
   private client: OpencodeClient | null = null
 
@@ -38,7 +72,13 @@ export class NotificationManager {
     }
 
     try {
-      const message = this.buildExitNotification(session, exitCode)
+      const elapsedMs = getElapsedMs(session)
+
+      if (isQuickInterrupt(elapsedMs)) {
+        await this.client.session.abort({ path: { id: session.parentSessionId } })
+      }
+
+      const message = this.buildExitNotification(session, exitCode, elapsedMs)
       await this.client.session.promptAsync({
         path: { id: session.parentSessionId },
         body: {
@@ -51,7 +91,7 @@ export class NotificationManager {
     }
   }
 
-  private buildExitNotification(session: PTYSession, exitCode: number): string {
+  private buildExitNotification(session: PTYSession, exitCode: number, elapsedMs: number): string {
     const lineCount = session.buffer.length
     let lastLine = ''
     if (lineCount > 0) {
@@ -73,19 +113,25 @@ export class NotificationManager {
       displayTitle.length > NOTIFICATION_TITLE_TRUNCATE
         ? `${displayTitle.slice(0, NOTIFICATION_TITLE_TRUNCATE)}...`
         : displayTitle
+    const quickInterrupt = isQuickInterrupt(elapsedMs)
 
     const lines = [
       '<pty_exited>',
       `ID: ${session.id}`,
       `Description: ${truncatedTitle}`,
+      `Elapsed: ${formatElapsed(elapsedMs)}`,
       `Exit Code: ${exitCode}`,
       `Output Lines: ${lineCount}`,
       '</pty_exited>',
       '',
     ]
 
+    if (quickInterrupt) {
+      lines.splice(3, 0, 'Quick Interrupt: yes')
+    }
+
     if (lastLine !== '') {
-      lines.splice(5, 0, `Last Line: ${lastLine}`)
+      lines.splice(quickInterrupt ? 6 : 5, 0, `Last Line: ${lastLine}`)
     }
 
     if (exitCode === 0) {
