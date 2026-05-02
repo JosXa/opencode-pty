@@ -248,11 +248,14 @@ Use `pty_snapshot_wait` to block until a condition is met instead of polling:
 pty_snapshot_wait: id="pty_a1b2c3d4", search="error|Error", timeout=30000
 → Resolves when the regex matches the full rendered screen text
 
+pty_snapshot_wait: id="pty_a1b2c3d4", searchAbsent="esc interrupt", timeout=30000
+→ Resolves when that text is no longer visible on the rendered screen
+
 pty_snapshot_wait: id="pty_a1b2c3d4", hashStableMs=2000, timeout=30000
 → Resolves when screen content is unchanged for 2 seconds
 ```
 
-When both `search` and `hashStableMs` are given, the first to match wins. `since` only changes the response to a diff against that seq and does not affect when the wait resolves.
+When multiple conditions are given, the first to match wins. `since` only changes the response to a diff against that seq and does not affect when the wait resolves.
 
 ### Example: Debugging OpenCode itself
 

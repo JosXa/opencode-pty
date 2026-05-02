@@ -12,11 +12,17 @@ export const ptySnapshotWait = tool({
       .string()
       .optional()
       .describe('Regex tested against the full rendered screen text. Resolves on first match.'),
+    searchAbsent: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'Regex tested against the full rendered screen text. Resolves when it no longer matches.'
+      ),
     hashStableMs: tool.schema
       .number()
       .optional()
       .describe(
-        'Resolve when the rendered screen hash is unchanged for this many ms (e.g., 2000 for "screen settled"). If combined with search, the first match wins.'
+        'Resolve when the rendered screen hash is unchanged for this many ms (e.g., 2000 for "screen settled"). If combined with search or searchAbsent, the first match wins.'
       ),
     timeout: tool.schema
       .number()
@@ -30,12 +36,15 @@ export const ptySnapshotWait = tool({
       ),
   },
   async execute(args) {
-    if (args.search == null && args.hashStableMs == null) {
-      throw new Error('At least one condition must be provided: search or hashStableMs.')
+    if (args.search == null && args.searchAbsent == null && args.hashStableMs == null) {
+      throw new Error(
+        'At least one condition must be provided: search, searchAbsent, or hashStableMs.'
+      )
     }
 
     const result = await manager.snapshotWait(args.id, {
       search: args.search != null ? new RegExp(args.search) : undefined,
+      searchAbsent: args.searchAbsent != null ? new RegExp(args.searchAbsent) : undefined,
       hashStableMs: args.hashStableMs,
       timeoutMs: args.timeout,
     })

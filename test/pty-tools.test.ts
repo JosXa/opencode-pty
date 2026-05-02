@@ -370,12 +370,53 @@ describe('PTY Tools', () => {
 
       expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
         search: /READY/,
+        searchAbsent: undefined,
         hashStableMs: undefined,
         timeoutMs: 1000,
       })
       expect(result).toContain('result="exited"')
       expect(result).toContain('status="exited"')
       expect(result).toContain('done')
+    })
+
+    it('should pass searchAbsent to snapshotWait', async () => {
+      spyOn(manager, 'snapshotWait').mockResolvedValue({
+        id: 'test-session-id',
+        status: 'running',
+        matched: true,
+        waitedMs: 25,
+        state: {
+          size: { cols: 120, rows: 40 },
+          cursor: { row: 0, col: 0, visible: true },
+          text: 'ready',
+          contentHash: 'gone123',
+          seq: 2,
+          lines: ['ready'],
+        },
+      })
+
+      const result = await ptySnapshotWait.execute(
+        { id: 'test-session-id', searchAbsent: 'esc interrupt', timeout: 1000 },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
+        search: undefined,
+        searchAbsent: /esc interrupt/,
+        hashStableMs: undefined,
+        timeoutMs: 1000,
+      })
+      expect(result).toContain('result="matched"')
+      expect(result).toContain('ready')
     })
 
     it('should right-align diff line numbers in changed-line output', async () => {

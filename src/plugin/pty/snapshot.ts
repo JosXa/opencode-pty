@@ -52,6 +52,8 @@ export interface SnapshotDiff {
 export interface WaitCondition {
   /** RegExp to match against screen text. Resolves on first match. */
   search?: RegExp
+  /** RegExp that must no longer match the screen text. Resolves on first absence. */
+  searchAbsent?: RegExp
   /** Resolve when the content hash stays unchanged for this many ms. */
   hashStableMs?: number
   /** Maximum time to wait before giving up (default: 30000). */
@@ -196,9 +198,10 @@ export class TerminalSnapshot {
    *
    * Supported conditions (at least one must be provided):
    *  - `search`: resolves when screen text matches the regex
+   *  - `searchAbsent`: resolves when screen text no longer matches the regex
    *  - `hashStableMs`: resolves when content hash is unchanged for N ms
    *
-   * If both are provided, the first condition to match wins.
+   * If multiple are provided, the first condition to match wins.
    */
   async waitForCondition(condition: WaitCondition): Promise<WaitResult> {
     const POLL_INTERVAL_MS = 100
@@ -222,6 +225,11 @@ export class TerminalSnapshot {
 
       // search condition
       if (condition.search?.test(state.text)) {
+        return { matched: true, waitedMs: Date.now() - start, state }
+      }
+
+      // searchAbsent condition
+      if (condition.searchAbsent && !condition.searchAbsent.test(state.text)) {
         return { matched: true, waitedMs: Date.now() - start, state }
       }
 

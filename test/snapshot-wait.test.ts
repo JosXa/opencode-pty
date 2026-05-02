@@ -55,4 +55,40 @@ describe('snapshotWait', () => {
     expect(result.status).toBe('exited')
     expect(result.waitedMs).toBeLessThan(1000)
   })
+
+  it('matches once absent text disappears from the rendered screen', async () => {
+    const snapshot = new TerminalSnapshot(120, 40)
+    snapshot.write('status: esc interrupt')
+    await snapshot.getSettledState()
+
+    const waitPromise = snapshot.waitForCondition({
+      searchAbsent: /esc interrupt/,
+      timeoutMs: 1000,
+    })
+
+    setTimeout(() => {
+      snapshot.write('\rstatus: ready')
+    }, 50)
+
+    const result = await waitPromise
+
+    expect(result.matched).toBe(true)
+    expect(result.exited).toBeUndefined()
+    expect(result.state.text).toContain('status: ready')
+    expect(result.state.text).not.toContain('esc interrupt')
+  })
+
+  it('matches immediately when absent text is already missing', async () => {
+    const snapshot = new TerminalSnapshot(120, 40)
+    snapshot.write('status: ready')
+    await snapshot.getSettledState()
+
+    const result = await snapshot.waitForCondition({
+      searchAbsent: /esc interrupt/,
+      timeoutMs: 1000,
+    })
+
+    expect(result.matched).toBe(true)
+    expect(result.waitedMs).toBeLessThan(1000)
+  })
 })

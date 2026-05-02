@@ -1,7 +1,8 @@
 Block until the PTY screen matches a condition, then return a snapshot. Use instead of polling `pty_snapshot`.
 
-Provide at least one condition. If both are given, the first to match wins:
+Provide at least one condition. If multiple are given, the first to match wins:
 - `search`: regex tested against the full rendered screen text
+- `searchAbsent`: regex tested against the full rendered screen text and resolves once it no longer matches
 - `hashStableMs`: rendered screen hash unchanged for N ms
 
 Returns on match, timeout, or PTY exit. `since` only formats the returned output as a diff and does not affect the wait condition.
