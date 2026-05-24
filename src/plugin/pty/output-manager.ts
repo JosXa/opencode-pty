@@ -58,14 +58,19 @@ export class OutputManager {
     session: PTYSession,
     condition: WaitCondition
   ): Promise<WaitResult & { id: string; status: PTYSession['status'] }> {
-    const result = await session.snapshot.waitForCondition({
-      ...condition,
-      exit: () => session.status !== 'running',
-    })
-    return {
-      ...result,
-      id: session.id,
-      status: session.status,
+    session.snapshotWaiters++
+    try {
+      const result = await session.snapshot.waitForCondition({
+        ...condition,
+        exit: () => session.status !== 'running',
+      })
+      return {
+        ...result,
+        id: session.id,
+        status: session.status,
+      }
+    } finally {
+      session.snapshotWaiters = Math.max(0, session.snapshotWaiters - 1)
     }
   }
 }

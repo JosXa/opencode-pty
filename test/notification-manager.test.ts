@@ -33,6 +33,7 @@ function createSession(overrides: Partial<PTYSession> = {}): PTYSession {
     parentSessionId: 'parent-session-id',
     parentAgent: 'agent-two',
     notifyOnExit: true,
+    snapshotWaiters: 0,
     buffer,
     snapshot: {} as PTYSession['snapshot'],
     process: null,

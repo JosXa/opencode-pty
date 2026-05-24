@@ -74,7 +74,7 @@ export class NotificationManager {
     try {
       const elapsedMs = getElapsedMs(session)
 
-      if (isQuickInterrupt(elapsedMs)) {
+      if (isQuickInterrupt(elapsedMs) && session.snapshotWaiters === 0) {
         await this.client.session.abort({ path: { id: session.parentSessionId } })
       }
 

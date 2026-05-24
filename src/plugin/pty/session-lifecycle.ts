@@ -39,6 +39,7 @@ export class SessionLifecycleManager {
       parentSessionId: opts.parentSessionId,
       parentAgent: opts.parentAgent,
       notifyOnExit: opts.notifyOnExit ?? false,
+      snapshotWaiters: 0,
       buffer,
       snapshot,
       process: null, // will be set

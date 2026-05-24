@@ -1,7 +1,35 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test'
+import { manager } from '../src/plugin/pty/manager.ts'
+import { ptySnapshotWait } from '../src/plugin/pty/tools/snapshot-wait.ts'
 import { ManagedTestClient, ManagedTestServer } from './utils.ts'
 import type { WSMessageServerSessionUpdate } from '../src/web/shared/types.ts'
 import type { PTYSessionInfo } from '../src/plugin/pty/types.ts'
+
+const toolContext = {
+  sessionID: 'parent',
+  messageID: 'msg',
+  agent: 'agent',
+  abort: new AbortController().signal,
+  metadata: () => {},
+  ask: async () => {},
+  directory: '/tmp',
+  worktree: '/tmp',
+}
+
+async function failAfter<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timeout: Timer | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), ms)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+  }
+}
 
 describe('PTY Manager Integration', () => {
   let managedTestServer: ManagedTestServer
@@ -112,6 +140,63 @@ describe('PTY Manager Integration', () => {
   })
 
   describe('Session Management Integration', () => {
+    it('should complete pty_snapshot_wait when a live session exits before matching', async () => {
+      const title = crypto.randomUUID()
+      const session = manager.spawn({
+        title,
+        command: 'sh',
+        args: ['-c', 'exit 0'],
+        description: 'Snapshot wait exit regression',
+        parentSessionId: managedTestServer.sessionId,
+      })
+
+      const result = await failAfter(
+        ptySnapshotWait.execute(
+          { id: session.id, search: 'this text never appears', timeout: 5000 },
+          toolContext
+        ),
+        1500,
+        'pty_snapshot_wait did not resolve promptly after the PTY exited'
+      )
+
+      expect(result).toContain('result="exited"')
+      expect(result).toContain('status="exited"')
+    })
+
+    it('should not abort the parent session when pty_snapshot_wait observes a notified fast exit', async () => {
+      let abortCalls = 0
+      manager.init({
+        session: {
+          abort: async () => {
+            abortCalls++
+          },
+          promptAsync: async () => {},
+        },
+      } as never)
+
+      const title = crypto.randomUUID()
+      const session = manager.spawn({
+        title,
+        command: 'sh',
+        args: ['-c', 'exit 0'],
+        description: 'Snapshot wait notified exit regression',
+        parentSessionId: managedTestServer.sessionId,
+        notifyOnExit: true,
+      })
+
+      const result = await failAfter(
+        ptySnapshotWait.execute(
+          { id: session.id, search: 'this text never appears', timeout: 5000 },
+          toolContext
+        ),
+        1500,
+        'pty_snapshot_wait did not resolve promptly after the notified PTY exited'
+      )
+
+      expect(result).toContain('result="exited"')
+      expect(abortCalls).toBe(0)
+    })
+
     it('should provide session data in correct format', async () => {
       await using managedTestClient = await ManagedTestClient.create(
         managedTestServer.server.getWsUrl()

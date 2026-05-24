@@ -20,6 +20,7 @@ export interface PTYSession {
   parentSessionId: string
   parentAgent?: string
   notifyOnExit: boolean
+  snapshotWaiters: number
   buffer: RingBuffer
   snapshot: TerminalSnapshot
   process: IPty | null
