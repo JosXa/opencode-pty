@@ -1,8 +1,10 @@
 import { tool } from '@opencode-ai/plugin'
-import { formatSnapshotDiffLines } from '../formatters.ts'
+import { formatSnapshotDiffLines, formatSnapshotWithInterleavedBackground } from '../formatters.ts'
 import { manager } from '../manager.ts'
 import { buildSessionNotFoundError } from '../utils.ts'
 import DESCRIPTION from './snapshot.txt'
+
+const INTERLEAVED_BACKGROUND = 'background'
 
 export const ptySnapshot = tool({
   description: DESCRIPTION,
@@ -14,9 +16,25 @@ export const ptySnapshot = tool({
       .describe(
         'Sequence number to diff against. Returns only changed lines since that seq. Omit for full snapshot.'
       ),
+    interleavedColors: tool.schema
+      .string()
+      .optional()
+      .describe(
+        'Optional snapshot mode. Set to `background` to interleave each visible text row with a background-color run row that keeps horizontal alignment while compressing long same-color spans.'
+      ),
   },
   async execute(args) {
+    if (args.interleavedColors != null && args.interleavedColors !== INTERLEAVED_BACKGROUND) {
+      throw new Error(
+        `Unsupported interleavedColors value '${args.interleavedColors}'. Only 'background' is currently supported.`
+      )
+    }
+
     if (args.since != null) {
+      if (args.interleavedColors != null) {
+        throw new Error('interleavedColors is not supported together with since diffs')
+      }
+
       const diff = manager.snapshotDiff(args.id, args.since)
       if (!diff) {
         throw buildSessionNotFoundError(args.id)
@@ -49,12 +67,25 @@ export const ptySnapshot = tool({
       throw buildSessionNotFoundError(args.id)
     }
 
+    const bodyLines =
+      args.interleavedColors === INTERLEAVED_BACKGROUND
+        ? formatSnapshotWithInterleavedBackground(
+            snapshot,
+            manager.snapshotColorMap(args.id, 'background') ?? {
+              ...snapshot,
+              kind: 'background',
+              lines: [],
+              legend: [],
+            }
+          )
+        : [snapshot.text || '(Screen is empty)']
+
     return [
       `<pty_snapshot id="${snapshot.id}" status="${snapshot.status}" seq="${snapshot.seq}" hash="${snapshot.contentHash}">`,
       `Size: ${snapshot.size.cols}x${snapshot.size.rows}`,
       `Cursor: (${snapshot.cursor.row}, ${snapshot.cursor.col}) visible=${snapshot.cursor.visible}`,
       '---',
-      snapshot.text || '(Screen is empty)',
+      ...bodyLines,
       `</pty_snapshot>`,
     ].join('\n')
   },

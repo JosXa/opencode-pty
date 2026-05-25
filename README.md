@@ -62,6 +62,8 @@ opencode
 | `pty_write`          | Send input to a PTY (text, escape sequences like `\x03` for Ctrl+C)        |
 | `pty_read`           | Read PTY output buffer as chat-safe text with pagination and regex filtering |
 | `pty_snapshot`       | Capture parsed terminal screen as clean text with cursor, size, and hash    |
+| `pty_snapshot_foreground_colors` | Capture rendered foreground colors as a label grid with legend |
+| `pty_snapshot_background_colors` | Capture rendered background colors as a label grid with legend |
 | `pty_snapshot_wait`  | Block until screen matches a regex or content stabilizes                    |
 | `pty_list`           | List all PTY sessions with status, PID, line count                          |
 | `pty_kill`           | Terminate a PTY, optionally cleanup the buffer                              |
@@ -229,7 +231,24 @@ This eliminates the need for polling -- perfect for long-running processes like 
 ```
 pty_snapshot: id="pty_a1b2c3d4"
 → Returns clean screen text with cursor position, size, seq number, and content hash
+
+pty_snapshot: id="pty_a1b2c3d4", interleavedColors="background"
+→ Returns the same text snapshot, but inserts a matching background-color run row under each visible text row
 ```
+
+### Inspect rendered colors in TUIs
+
+When a TUI uses highlighting, inverse video, or colored selections, plain text snapshots can miss what the user would actually see. These tools expose the rendered color layers as compact label grids, one for foreground and one for background:
+
+```
+pty_snapshot_foreground_colors: id="pty_a1b2c3d4"
+→ Returns a compact whole-screen map like `01-10: 120A` with a legend such as `A=default  B=palette:12  C=#ffcc00`
+
+pty_snapshot_background_colors: id="pty_a1b2c3d4"
+→ Returns the matching background map, collapsing repeated rows into ranges so selected rows still stand out without losing layout context
+```
+
+This is especially useful for `ctrl+p` style menus where the selected item differs mostly by highlight color rather than by text. If you want the text and highlight rows together in one response, use `pty_snapshot` with `interleavedColors="background"`, which preserves horizontal alignment while making long flat spans cheaper to read.
 
 ### Track screen changes with seq-based diffs
 

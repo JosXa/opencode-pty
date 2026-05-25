@@ -27,6 +27,33 @@ export interface SnapshotState {
   lines: string[]
 }
 
+export type SnapshotColorLayer = 'foreground' | 'background'
+
+export interface SnapshotColorLegendEntry {
+  label: string
+  color: string
+}
+
+export interface SnapshotColorMap {
+  kind: SnapshotColorLayer
+  size: SnapshotSize
+  cursor: SnapshotCursor
+  contentHash: string
+  seq: number
+  lines: string[]
+  legend: SnapshotColorLegendEntry[]
+}
+
+interface SnapshotBufferCell {
+  isInverse(): number
+  isFgRGB(): boolean
+  isBgRGB(): boolean
+  isFgPalette(): boolean
+  isBgPalette(): boolean
+  getFgColor(): number
+  getBgColor(): number
+}
+
 /** A single changed line in a diff. */
 export interface LineDiff {
   line: number
@@ -81,6 +108,8 @@ interface HistoryFrame {
 }
 
 const DEFAULT_HISTORY_CAPACITY = 200
+const COLOR_MAP_LABELS =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%()*+,-./:;=?@[]^_{|}~'
 
 /**
  * Maintains a headless xterm.js terminal that mirrors PTY output,
@@ -270,6 +299,45 @@ export class TerminalSnapshot {
     })
   }
 
+  getColorMap(kind: SnapshotColorLayer): SnapshotColorMap {
+    const buffer = this.terminal.buffer.active
+    const state = this.cachedState
+    const startLine = buffer.viewportY
+    const labelByColor = new Map<string, string>()
+    const legend: SnapshotColorLegendEntry[] = []
+    const lines: string[] = []
+
+    for (let row = 0; row < this.terminal.rows; row++) {
+      const line = buffer.getLine(startLine + row)
+      let colorLine = ''
+
+      for (let col = 0; col < this.terminal.cols; col++) {
+        const color = describeRenderedCellColor(line?.getCell(col), kind)
+        let label = labelByColor.get(color)
+
+        if (!label) {
+          label = COLOR_MAP_LABELS[labelByColor.size] ?? '?'
+          labelByColor.set(color, label)
+          legend.push({ label, color })
+        }
+
+        colorLine += label
+      }
+
+      lines.push(colorLine)
+    }
+
+    return {
+      kind,
+      size: state.size,
+      cursor: state.cursor,
+      contentHash: state.contentHash,
+      seq: state.seq,
+      lines,
+      legend,
+    }
+  }
+
   private pushHistory(state: SnapshotState): void {
     this.history.push({
       seq: state.seq,
@@ -311,6 +379,43 @@ export class TerminalSnapshot {
       lines,
     }
   }
+}
+
+function describeRenderedCellColor(
+  cell: SnapshotBufferCell | undefined,
+  kind: SnapshotColorLayer
+): string {
+  if (!cell) {
+    return 'default'
+  }
+
+  const effectiveLayer = Boolean(cell.isInverse())
+    ? kind === 'foreground'
+      ? 'background'
+      : 'foreground'
+    : kind
+
+  if (effectiveLayer === 'foreground') {
+    if (cell.isFgRGB()) {
+      return `rgb:${formatRgbColor(cell.getFgColor())}`
+    }
+    if (cell.isFgPalette()) {
+      return `palette:${cell.getFgColor()}`
+    }
+    return 'default'
+  }
+
+  if (cell.isBgRGB()) {
+    return `rgb:${formatRgbColor(cell.getBgColor())}`
+  }
+  if (cell.isBgPalette()) {
+    return `palette:${cell.getBgColor()}`
+  }
+  return 'default'
+}
+
+function formatRgbColor(color: number): string {
+  return `#${color.toString(16).padStart(6, '0')}`
 }
 
 /** Compute line-level diff between old and new screen content. */

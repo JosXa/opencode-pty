@@ -1,5 +1,12 @@
 import type { SnapshotDiff, WaitCondition, WaitResult } from './snapshot.ts'
-import type { PTYSession, PTYStatus, ReadResult, SearchResult, SnapshotResult } from './types.ts'
+import type {
+  PTYSession,
+  PTYStatus,
+  ReadResult,
+  SearchResult,
+  SnapshotColorMapResult,
+  SnapshotResult,
+} from './types.ts'
 
 export class OutputManager {
   write(session: PTYSession, data: string): boolean {
@@ -39,6 +46,14 @@ export class OutputManager {
       id: session.id,
       status: session.status,
       ...session.snapshot.getState(),
+    }
+  }
+
+  snapshotColorMap(session: PTYSession, kind: 'foreground' | 'background'): SnapshotColorMapResult {
+    return {
+      id: session.id,
+      status: session.status,
+      ...session.snapshot.getColorMap(kind),
     }
   }
 

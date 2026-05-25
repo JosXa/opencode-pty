@@ -11,6 +11,7 @@ import type {
   PTYStatus,
   ReadResult,
   SearchResult,
+  SnapshotColorMapResult,
   SnapshotResult,
   SpawnOptions,
 } from './types.ts'
@@ -172,6 +173,15 @@ class PTYManager {
       this.lifecycleManager,
       id,
       (session) => this.outputManager.snapshot(session),
+      null
+    )
+  }
+
+  snapshotColorMap(id: string, kind: 'foreground' | 'background'): SnapshotColorMapResult | null {
+    return withSession(
+      this.lifecycleManager,
+      id,
+      (session) => this.outputManager.snapshotColorMap(session, kind),
       null
     )
   }

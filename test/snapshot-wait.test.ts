@@ -92,4 +92,25 @@ describe('snapshotWait', () => {
     expect(result.matched).toBe(true)
     expect(result.waitedMs).toBeLessThan(1000)
   })
+
+  it('captures rendered foreground and background color maps', async () => {
+    const snapshot = new TerminalSnapshot(12, 3)
+    snapshot.write('\u001b[31mR\u001b[0m\u001b[44mB\u001b[0m\u001b[7mI\u001b[0m')
+    await snapshot.getSettledState()
+
+    const foreground = snapshot.getColorMap('foreground')
+    const background = snapshot.getColorMap('background')
+
+    expect(foreground.lines[0]?.slice(0, 3)).toBe('ABB')
+    expect(foreground.legend).toEqual([
+      { label: 'A', color: 'palette:1' },
+      { label: 'B', color: 'default' },
+    ])
+
+    expect(background.lines[0]?.slice(0, 3)).toBe('ABA')
+    expect(background.legend).toEqual([
+      { label: 'A', color: 'default' },
+      { label: 'B', color: 'palette:4' },
+    ])
+  })
 })

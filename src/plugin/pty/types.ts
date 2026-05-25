@@ -1,6 +1,6 @@
 import type { IPty } from 'bun-pty'
 import type { RingBuffer } from './buffer.ts'
-import type { SnapshotState, TerminalSnapshot } from './snapshot.ts'
+import type { SnapshotColorMap, SnapshotState, TerminalSnapshot } from './snapshot.ts'
 
 export type PTYStatus = 'running' | 'exited' | 'killing' | 'killed'
 
@@ -70,6 +70,11 @@ export interface SearchResult {
 }
 
 export interface SnapshotResult extends SnapshotState {
+  id: string
+  status: PTYStatus
+}
+
+export interface SnapshotColorMapResult extends SnapshotColorMap {
   id: string
   status: PTYStatus
 }

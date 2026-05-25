@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, mock, spyOn, afterAll } from 'bun:tes
 import { ptySpawn } from '../src/plugin/pty/tools/spawn.ts'
 import { ptyRead } from '../src/plugin/pty/tools/read.ts'
 import { ptyList } from '../src/plugin/pty/tools/list.ts'
+import {
+  ptySnapshotBackgroundColors,
+  ptySnapshotForegroundColors,
+} from '../src/plugin/pty/tools/snapshot-colors.ts'
 import { ptySnapshot } from '../src/plugin/pty/tools/snapshot.ts'
 import { ptySnapshotWait } from '../src/plugin/pty/tools/snapshot-wait.ts'
 import { RingBuffer } from '../src/plugin/pty/buffer.ts'
@@ -514,6 +518,150 @@ describe('PTY Tools', () => {
       expect(result).toContain('   9: #restate')
       expect(result).toContain('  10: [+] #scout')
       expect(result).toContain(' 118: [removed] #done')
+    })
+
+    it('should interleave background color rows with full snapshots', async () => {
+      spyOn(manager, 'snapshot').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        size: { cols: 6, rows: 3 },
+        cursor: { row: 1, col: 2, visible: true },
+        text: 'alpha\nbeta',
+        contentHash: 'hash789',
+        seq: 4,
+        lines: ['alpha ', 'beta  ', '      '],
+      })
+      spyOn(manager, 'snapshotColorMap').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        kind: 'background',
+        size: { cols: 6, rows: 3 },
+        cursor: { row: 1, col: 2, visible: true },
+        contentHash: 'hash789',
+        seq: 4,
+        lines: ['AABBCC', 'CCDDEE', 'EEEEEE'],
+        legend: [
+          { label: 'A', color: 'default' },
+          { label: 'B', color: 'rgb:#82aaff' },
+        ],
+      })
+
+      const result = await ptySnapshot.execute(
+        { id: 'test-session-id', interleavedColors: 'background' },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshot).toHaveBeenCalledWith('test-session-id')
+      expect(manager.snapshotColorMap).toHaveBeenCalledWith('test-session-id', 'background')
+      expect(result).toContain('alpha')
+      expect(result).toContain('ABBC')
+      expect(result).toContain('beta')
+      expect(result).toContain('CDDE')
+      expect(result).toContain('Legend:')
+      expect(result).toContain('B = rgb:#82aaff')
+    })
+
+    it('should reject interleaved colors on diff snapshots', async () => {
+      await expect(
+        ptySnapshot.execute(
+          { id: 'test-session-id', since: 1, interleavedColors: 'background' },
+          {
+            sessionID: 'parent',
+            messageID: 'msg',
+            agent: 'agent',
+            abort: new AbortController().signal,
+            metadata: () => {},
+            ask: async () => {},
+            directory: '/tmp',
+            worktree: '/tmp',
+          }
+        )
+      ).rejects.toThrow('interleavedColors is not supported together with since diffs')
+    })
+  })
+
+  describe('ptySnapshot color tools', () => {
+    it('should format the foreground color map', async () => {
+      spyOn(manager, 'snapshotColorMap').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        kind: 'foreground',
+        size: { cols: 4, rows: 3 },
+        cursor: { row: 0, col: 1, visible: true },
+        contentHash: 'hash123',
+        seq: 7,
+        lines: ['AABB', 'AABB', 'ABBA'],
+        legend: [
+          { label: 'A', color: 'default' },
+          { label: 'B', color: 'palette:12' },
+        ],
+      })
+
+      const result = await ptySnapshotForegroundColors.execute(
+        { id: 'test-session-id' },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshotColorMap).toHaveBeenCalledWith('test-session-id', 'foreground')
+      expect(result).toContain('<pty_snapshot_foreground_colors')
+      expect(result).toContain('Legend: A=default  B=palette:12')
+      expect(result).toContain('1-2: 2A 2B')
+      expect(result).toContain('3:   1A 2B 1A')
+    })
+
+    it('should format the background color map', async () => {
+      spyOn(manager, 'snapshotColorMap').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        kind: 'background',
+        size: { cols: 4, rows: 4 },
+        cursor: { row: 1, col: 2, visible: false },
+        contentHash: 'hash456',
+        seq: 8,
+        lines: ['ABBA', 'ABBA', 'BAAB', 'BAAB'],
+        legend: [
+          { label: 'A', color: 'default' },
+          { label: 'B', color: 'rgb:#ffcc00' },
+        ],
+      })
+
+      const result = await ptySnapshotBackgroundColors.execute(
+        { id: 'test-session-id' },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshotColorMap).toHaveBeenCalledWith('test-session-id', 'background')
+      expect(result).toContain('<pty_snapshot_background_colors')
+      expect(result).toContain('Legend: A=default  B=#ffcc00')
+      expect(result).toContain('1-2: 1A 2B 1A')
+      expect(result).toContain('3-4: 1B 2A 1B')
     })
   })
 
