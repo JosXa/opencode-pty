@@ -570,6 +570,51 @@ describe('PTY Tools', () => {
       expect(result).toContain('B = rgb:#82aaff')
     })
 
+    it('should treat since=0 as omitted for full snapshots', async () => {
+      mock.restore()
+      spyOn(manager, 'snapshot').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        size: { cols: 6, rows: 1 },
+        cursor: { row: 0, col: 0, visible: true },
+        text: 'alpha',
+        contentHash: 'hash789',
+        seq: 4,
+        lines: ['alpha'],
+      })
+      spyOn(manager, 'snapshotDiff')
+      spyOn(manager, 'snapshotColorMap').mockReturnValue({
+        id: 'test-session-id',
+        status: 'running',
+        kind: 'background',
+        size: { cols: 6, rows: 1 },
+        cursor: { row: 0, col: 0, visible: true },
+        contentHash: 'hash789',
+        seq: 4,
+        lines: ['AAAAAA'],
+        legend: [{ label: 'A', color: 'default' }],
+      })
+
+      const result = await ptySnapshot.execute(
+        { id: 'test-session-id', since: 0, interleavedColors: 'background' },
+        {
+          sessionID: 'parent',
+          messageID: 'msg',
+          agent: 'agent',
+          abort: new AbortController().signal,
+          metadata: () => {},
+          ask: async () => {},
+          directory: '/tmp',
+          worktree: '/tmp',
+        }
+      )
+
+      expect(manager.snapshotDiff).not.toHaveBeenCalled()
+      expect(manager.snapshot).toHaveBeenCalledWith('test-session-id')
+      expect(result).toContain('alpha')
+      expect(result).toContain('Legend:')
+    })
+
     it('should reject interleaved colors on diff snapshots', async () => {
       await expect(
         ptySnapshot.execute(

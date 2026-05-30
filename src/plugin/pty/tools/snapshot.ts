@@ -30,12 +30,15 @@ export const ptySnapshot = tool({
       )
     }
 
-    if (args.since != null) {
+    const sinceSeq = args.since
+    const hasSince = sinceSeq != null && sinceSeq > 0
+
+    if (hasSince) {
       if (args.interleavedColors != null) {
         throw new Error('interleavedColors is not supported together with since diffs')
       }
 
-      const diff = manager.snapshotDiff(args.id, args.since)
+      const diff = manager.snapshotDiff(args.id, sinceSeq)
       if (!diff) {
         throw buildSessionNotFoundError(args.id)
       }
