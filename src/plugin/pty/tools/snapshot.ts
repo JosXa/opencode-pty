@@ -24,9 +24,11 @@ export const ptySnapshot = tool({
       ),
   },
   async execute(args) {
-    if (args.interleavedColors != null && args.interleavedColors !== INTERLEAVED_BACKGROUND) {
+    const interleavedColors = args.interleavedColors?.trim() || undefined
+
+    if (interleavedColors != null && interleavedColors !== INTERLEAVED_BACKGROUND) {
       throw new Error(
-        `Unsupported interleavedColors value '${args.interleavedColors}'. Only 'background' is currently supported.`
+        `Unsupported interleavedColors value '${interleavedColors}'. Only 'background' is currently supported.`
       )
     }
 
@@ -34,7 +36,7 @@ export const ptySnapshot = tool({
     const hasSince = sinceSeq != null && sinceSeq > 0
 
     if (hasSince) {
-      if (args.interleavedColors != null) {
+      if (interleavedColors != null) {
         throw new Error('interleavedColors is not supported together with since diffs')
       }
 
@@ -71,7 +73,7 @@ export const ptySnapshot = tool({
     }
 
     const bodyLines =
-      args.interleavedColors === INTERLEAVED_BACKGROUND
+      interleavedColors === INTERLEAVED_BACKGROUND
         ? formatSnapshotWithInterleavedBackground(
             snapshot,
             manager.snapshotColorMap(args.id, 'background') ?? {

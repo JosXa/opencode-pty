@@ -36,15 +36,18 @@ export const ptySnapshotWait = tool({
       ),
   },
   async execute(args) {
-    if (args.search == null && args.searchAbsent == null && args.hashStableMs == null) {
+    const search = args.search?.trim() || undefined
+    const searchAbsent = args.searchAbsent?.trim() || undefined
+
+    if (search == null && searchAbsent == null && args.hashStableMs == null) {
       throw new Error(
         'At least one condition must be provided: search, searchAbsent, or hashStableMs.'
       )
     }
 
     const result = await manager.snapshotWait(args.id, {
-      search: args.search != null ? new RegExp(args.search) : undefined,
-      searchAbsent: args.searchAbsent != null ? new RegExp(args.searchAbsent) : undefined,
+      search: search != null ? new RegExp(search) : undefined,
+      searchAbsent: searchAbsent != null ? new RegExp(searchAbsent) : undefined,
       hashStableMs: args.hashStableMs,
       timeoutMs: args.timeout,
     })
