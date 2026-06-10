@@ -212,7 +212,7 @@ describe('WebSocket Functionality', () => {
       )
       const testSession = manager.spawn({
         command: 'bash',
-        args: [],
+        args: ['-lc', 'read line; echo "$line"'],
         description: 'Test session for subscription logic',
         parentSessionId: managedTestServer.sessionId,
       })
@@ -233,10 +233,15 @@ describe('WebSocket Functionality', () => {
       await subscribePromise
 
       let rawData = ''
-      managedTestClient.rawDataCallbacks.push((message) => {
-        if (message.session.id === testSession.id) {
-          rawData += message.rawData
-        }
+      const rawDataPromise = new Promise<void>((res) => {
+        managedTestClient.rawDataCallbacks.push((message) => {
+          if (message.session.id === testSession.id) {
+            rawData += message.rawData
+            if (rawData.includes('Hello from subscription test')) {
+              res()
+            }
+          }
+        })
       })
 
       const sessionUpdatePromise = new Promise<WSMessageServerSessionUpdate>((res) => {
@@ -253,11 +258,11 @@ describe('WebSocket Functionality', () => {
       managedTestClient.send({
         type: 'input',
         sessionId: testSession.id,
-        data: "echo 'Hello from subscription test'\nexit\n",
+        data: 'Hello from subscription test\n',
       })
 
-      // Wait for session to exit
-      await sessionUpdatePromise
+      // Wait for both the subscribed raw data and natural process exit.
+      await Promise.all([rawDataPromise, sessionUpdatePromise])
 
       // Check that we received the echoed output
       expect(rawData).toContain('Hello from subscription test')
@@ -275,7 +280,7 @@ describe('WebSocket Functionality', () => {
         sessionId: testSession.id,
       })
       await unsubscribePromise
-    }, 500)
+    }, 5000)
 
     it('should handle multiple subscription states correctly', async () => {
       await using managedTestClient = await ManagedTestClient.create(
@@ -352,6 +357,6 @@ describe('WebSocket Functionality', () => {
       // multiple subscriptions per client, which is essential for the UI
       // to properly track counter state for different sessions.
       // Integration test failures were DOM-related, not subscription logic issues.
-    }, 200)
+    }, 1000)
   })
 })

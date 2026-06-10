@@ -7,7 +7,7 @@ interface UseSessionManagerOptions {
   activeSession: PTYSessionInfo | null
   setActiveSession: (session: PTYSessionInfo | null) => void
   subscribeWithRetry: (sessionId: string) => void
-  sendInput?: (sessionId: string, data: string) => void
+  sendInput?: (sessionId: string, data: string) => boolean
   wsConnected?: boolean
   onRawOutputUpdate?: (rawOutput: string) => void
 }
@@ -60,8 +60,9 @@ export function useSessionManager({
       // Try WebSocket first if connected and available
       if (wsConnected && sendInput) {
         try {
-          sendInput(activeSession.id, data)
-          return
+          if (sendInput(activeSession.id, data)) {
+            return
+          }
         } catch (error) {
           console.warn('WebSocket input failed, falling back to HTTP:', error)
         }

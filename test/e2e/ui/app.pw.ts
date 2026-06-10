@@ -32,6 +32,7 @@ extendedTest.describe('App Component', () => {
   })
 
   extendedTest('shows no active sessions message when empty', async ({ page }) => {
+    await page.waitForSelector('.sidebar', { timeout: 10000 })
     await expect(page.getByText('● Connected')).toBeVisible({ timeout: 10000 })
 
     // Now check that "No active sessions" appears in the sidebar

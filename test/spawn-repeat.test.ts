@@ -5,8 +5,49 @@ import {
   manager,
   rawOutputCallbacks,
   registerRawOutputCallback,
+  removeRawOutputCallback,
 } from '../src/plugin/pty/manager.ts'
-import type { Subprocess } from 'bun'
+import type { PTYSessionInfo } from '../src/plugin/pty/types.ts'
+
+const ECHO_TEXT = 'Hello World'
+const OUTPUT_TIMEOUT_MS = 5000
+const REPRODUCIBLE_RUNS = 75
+
+async function spawnEchoAndRead(title: string): Promise<string> {
+  let rawDataTotal = ''
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  let callback: (session: PTYSessionInfo, rawData: string) => void = () => {}
+  const promise = new Promise<string>((resolve, reject) => {
+    callback = (session, rawData) => {
+      if (session.title !== title) return
+      rawDataTotal += rawData
+      if (rawDataTotal.includes(ECHO_TEXT)) {
+        resolve(rawDataTotal)
+      }
+    }
+
+    timeout = setTimeout(() => {
+      reject(new Error(`Timeout waiting for ${ECHO_TEXT}, received: ${rawDataTotal}`))
+    }, OUTPUT_TIMEOUT_MS)
+  })
+
+  registerRawOutputCallback(callback)
+  let session: PTYSessionInfo | undefined
+  try {
+    session = manager.spawn({
+      title,
+      command: 'echo',
+      args: [ECHO_TEXT],
+      description: 'Echo test session',
+      parentSessionId: 'test',
+    })
+    return await promise
+  } finally {
+    if (timeout) clearTimeout(timeout)
+    removeRawOutputCallback(callback)
+    if (session) manager.kill(session.id, true)
+  }
+}
 
 describe('PTY Echo Behavior', () => {
   beforeEach(() => {
@@ -16,139 +57,26 @@ describe('PTY Echo Behavior', () => {
   afterEach(() => {
     // Clean up any sessions
     manager.clearAllSessions()
+    rawOutputCallbacks.length = 0
   })
 
-  class TestSpawner {
-    readonly subprocess: Subprocess<'ignore', 'pipe', 'pipe'>
-    stderrOutput = ''
-    stdoutOutput = ''
-    readonly testNumber: number
-    constructor(testNumber: number) {
-      this.testNumber = testNumber
-      this.subprocess = Bun.spawn({
-        cmd: [
-          'bun',
-          'test',
-          'spawn-repeat.test.ts',
-          '--test-name-pattern',
-          'should receive initial data once',
-        ],
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: { ...process.env, SYNC_TESTS: '1' },
-      })
-
-      const { stdout, stderr } = this.subprocess
-
-      ;(async () => {
-        const decoder = new TextDecoder()
-        const reader = stderr.getReader()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            this.stderrOutput += decoder.decode(value, { stream: true })
-            if (done) break
-          }
-          this.stderrOutput += decoder.decode() // Flush any remaining buffered data
-        } finally {
-          reader.releaseLock()
-        }
-      })()
-      ;(async () => {
-        const decoder = new TextDecoder()
-        const reader = stdout.getReader()
-        try {
-          while (true) {
-            const { done, value } = await reader.read()
-            this.stdoutOutput += decoder.decode(value, { stream: true })
-            if (done) break
-          }
-          this.stdoutOutput += decoder.decode() // Flush any remaining buffered data
-        } finally {
-          reader.releaseLock()
-        }
-      })()
-    }
-  }
-
   it('should receive initial data reproducibly', async () => {
-    const start = Date.now()
-    const maxRuntime = 1000
-    let runnings = 1
-    const spawned: TestSpawner[] = []
-    while (Date.now() - start < maxRuntime) {
-      runnings++
-      const testSpawner = new TestSpawner(runnings)
-      spawned.push(testSpawner)
+    const failures: string[] = []
+    for (let i = 0; i < REPRODUCIBLE_RUNS; i++) {
+      const title = `${crypto.randomUUID()}-${i}`
+      try {
+        const rawData = await spawnEchoAndRead(title)
+        expect(rawData).toContain(ECHO_TEXT)
+      } catch (error) {
+        failures.push(`run ${i + 1}: ${error instanceof Error ? error.message : String(error)}`)
+      }
     }
-    let errorMessage = ''
-    errorMessage += `[TEST] Spawned ${runnings} subprocesses in ${Date.now() - start}ms.\n`
-    const timeout = new Promise<void>((resolve) => {
-      setTimeout(() => resolve(), 20000)
-    })
-    const all = Promise.all(spawned.map((s) => s.subprocess.exited))
-    await Promise.race([all, timeout])
-    const stillRunning = spawned.filter((s) => s.subprocess.exitCode === null)
-    if (stillRunning.length > 0) {
-      errorMessage += `[TEST] Timeout reached after 20s with ${stillRunning.length} subprocesses still running.\n`
-      stillRunning.forEach((s) => {
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
-      })
-    }
-    const exitCodeNonZero = spawned.filter(
-      (s) => s.subprocess.exitCode !== null && s.subprocess.exitCode !== 0
-    )
-    if (exitCodeNonZero.length > 0) {
-      errorMessage += `[TEST] ${exitCodeNonZero.length} subprocesses exited with non-zero exit code.\n`
-      exitCodeNonZero.forEach((s) => {
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stderr: ${s.stderrOutput}\n`
-        errorMessage += `[TEST] Subprocess ${s.testNumber} stdout: ${s.stdoutOutput}\n`
-      })
-    }
-    expect(stillRunning.length + exitCodeNonZero.length, errorMessage).toBe(0)
-  }, 60000)
 
-  it.skipIf(!process.env.SYNC_TESTS)(
-    'should receive initial data once',
-    async () => {
-      const title = crypto.randomUUID()
-      // Subscribe to raw output events
-      const promise = new Promise<string>((resolve, reject) => {
-        let rawDataTotal = ''
-        registerRawOutputCallback((session, rawData) => {
-          // console.log(`[TEST] Received raw data for session ${session.id} (${session.title}): ${rawData}`)
-          if (session.title !== title) return
-          rawDataTotal += rawData
-          if (rawData.includes('Hello World')) {
-            resolve(rawDataTotal)
-          }
-        })
-        setTimeout(() => {
-          reject(new Error(`Timeout waiting for Hello World, received: ${rawDataTotal}`))
-        }, 10000)
-      })
+    expect(failures, failures.join('\n')).toEqual([])
+  }, 30000)
 
-      // Spawn interactive bash session
-      const session = manager.spawn({
-        title: title,
-        command: 'echo',
-        args: ['Hello World'],
-        description: 'Echo test session',
-        parentSessionId: 'test',
-      })
-
-      // await Promise.resolve() // Yield to allow session to be fully registered and callbacks to be set up
-      const rawData = await promise
-      expect(rawData).toContain('Hello World')
-
-      // Clean up
-      manager.kill(session.id, true)
-      rawOutputCallbacks.length = 0
-
-      // Verify echo occurred
-      expect(rawData).toContain('Hello World')
-    },
-    10000
-  )
+  it('should receive initial data once', async () => {
+    const rawData = await spawnEchoAndRead(crypto.randomUUID())
+    expect(rawData).toContain(ECHO_TEXT)
+  })
 })

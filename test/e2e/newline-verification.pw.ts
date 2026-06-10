@@ -27,10 +27,16 @@ extendedTest.describe('Xterm Newline Handling', () => {
     })
     // await page.waitForTimeout(50)
 
-    // Type single character
+    // Type through xterm's hidden textarea so the test verifies the UI input path,
+    // not just backend input, while avoiding browser-dependent click focus races.
     await page.locator('.terminal.xterm').click()
-    await page.keyboard.type('a')
-    await waitForTerminalRegex(page, /a/)
+    const textarea = page.locator('.xterm-helper-textarea')
+    await textarea.waitFor({ state: 'attached', timeout: 5000 })
+    await textarea.focus()
+    await expect(textarea).toBeFocused()
+    const inputChar = 'q'
+    await page.keyboard.type(inputChar)
+    await waitForTerminalRegex(page, /\$\s*q/)
 
     const afterContent = await getSerializedContentByXtermSerializeAddon(page, {
       excludeModes: true,
@@ -40,8 +46,8 @@ extendedTest.describe('Xterm Newline Handling', () => {
     // Use robust character counting
     const cleanBefore = Bun.stripANSI(beforeContent)
     const cleanAfter = Bun.stripANSI(afterContent)
-    const beforeCount = (cleanBefore.match(/a/g) || []).length
-    const afterCount = (cleanAfter.match(/a/g) || []).length
+    const beforeCount = (cleanBefore.match(new RegExp(inputChar, 'g')) || []).length
+    const afterCount = (cleanAfter.match(new RegExp(inputChar, 'g')) || []).length
     expect(afterCount - beforeCount).toBe(1)
   })
 
@@ -69,11 +75,16 @@ extendedTest.describe('Xterm Newline Handling', () => {
 
     // Type command
     await page.locator('.terminal.xterm').click()
-    await page.keyboard.type("echo 'Hello World'")
+    const textarea = page.locator('.xterm-helper-textarea')
+    await textarea.waitFor({ state: 'attached', timeout: 5000 })
+    await textarea.focus()
+    await expect(textarea).toBeFocused()
+    const command = "echo 'Hello World'"
+    await page.keyboard.type(command)
     await page.keyboard.press('Enter')
 
-    // Wait for output
-    await waitForTerminalRegex(page, /Hello World/)
+    // Wait for the command output line, not just for the echoed input text.
+    await waitForTerminalRegex(page, /\nHello World\n/)
 
     // Get final terminal buffer via SerializeAddon (canonical, robust method)
     const finalBuffer = Bun.stripANSI(
@@ -89,8 +100,8 @@ extendedTest.describe('Xterm Newline Handling', () => {
     expect(nonEmptyLines.some((l) => l.includes('Hello World'))).toBe(true)
     expect(nonEmptyLines[nonEmptyLines.length - 1]).toMatch(/\$/)
     // Order: prompt, echo, output, (optional prompt)
-    const idxCmd = nonEmptyLines.findIndex((l) => l.includes("echo 'Hello World'"))
-    const idxOut = nonEmptyLines.findLastIndex((l) => l.includes('Hello World'))
+    const idxCmd = nonEmptyLines.findIndex((l) => l.includes(command))
+    const idxOut = nonEmptyLines.findLastIndex((l) => l.trim() === 'Hello World')
     expect(idxCmd).toBeGreaterThan(-1)
     expect(idxOut).toBeGreaterThan(idxCmd)
     // At least 3 lines: the first prompt, echoed line, 'Hello World', maybe prompt

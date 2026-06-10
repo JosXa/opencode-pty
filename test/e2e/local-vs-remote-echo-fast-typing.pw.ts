@@ -1,4 +1,7 @@
-import { getSerializedContentByXtermSerializeAddon } from './xterm-test-helpers'
+import {
+  getSerializedContentByXtermSerializeAddon,
+  waitForTerminalRegex,
+} from './xterm-test-helpers'
 import { test as extendedTest, expect } from './fixtures'
 
 extendedTest.describe('Xterm Content Extraction - Local vs Remote Echo (Fast Typing)', () => {
@@ -21,20 +24,23 @@ extendedTest.describe('Xterm Content Extraction - Local vs Remote Echo (Fast Typ
       await page.waitForSelector('.xterm', { timeout: 5000 })
 
       // Wait for session prompt to appear, indicating readiness
-      await page.waitForSelector('.xterm:has-text("$")', { timeout: 10000 })
+      await waitForTerminalRegex(page, /\$\s*$/)
 
       // Take pre-input terminal snapshot (via SerializeAddon)
       const beforeInput = await getSerializedContentByXtermSerializeAddon(page)
 
       // Fast typing - no delays to trigger local echo interference
       await page.locator('.terminal.xterm').click()
+      const textarea = page.locator('.xterm-helper-textarea')
+      await textarea.waitFor({ state: 'attached', timeout: 5000 })
+      await textarea.focus()
+      await expect(textarea).toBeFocused()
       await page.keyboard.type('echo "Hello World"')
       await page.keyboard.press('Enter')
 
       // Wait for output to flush (look for "Hello World" on the buffer)
       // Use xterm SerializeAddon waiter for robust pattern match
-      await page.waitForTimeout(200) // Give PTY process a moment to echo
-      await page.waitForSelector('.xterm:has-text("Hello World")', { timeout: 4000 })
+      await waitForTerminalRegex(page, /\nHello World\n/)
 
       // Take post-input terminal snapshot (via SerializeAddon)
       const afterInput = await getSerializedContentByXtermSerializeAddon(page)

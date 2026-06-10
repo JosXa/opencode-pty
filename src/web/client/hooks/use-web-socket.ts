@@ -55,7 +55,7 @@ export function useWebSocket({
           // Auto-select first running session if none selected (skip in tests that need empty state)
           const shouldSkipAutoselect = localStorage.getItem(SKIP_AUTOSELECT_KEY) === 'true'
           let autoSelected: PTYSessionInfo | null = null
-          if (sessions.length > 0 && !activeSession && !shouldSkipAutoselect) {
+          if (sessions.length > 0 && !activeSessionRef.current && !shouldSkipAutoselect) {
             const runningSession =
               sessions.find((s: PTYSessionInfo) => s.status === 'running') || null
             autoSelected = runningSession || sessions[0] || null
@@ -99,14 +99,19 @@ export function useWebSocket({
       } catch {}
     }
     ws.onclose = () => {
-      setConnected(false)
+      if (wsRef.current === ws) {
+        setConnected(false)
+      }
     }
     ws.onerror = () => {}
     wsRef.current = ws
     return () => {
+      if (wsRef.current === ws) {
+        wsRef.current = null
+      }
       ws.close()
     }
-  }, [activeSession, onRawData, onSessionList, onSessionUpdate])
+  }, [onRawData, onSessionList, onSessionUpdate])
 
   const subscribe = (sessionId: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -124,10 +129,13 @@ export function useWebSocket({
     }
   }
 
-  const sendInput = (sessionId: string, data: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'input', sessionId, data }))
+  const sendInput = (sessionId: string, data: string): boolean => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      return false
     }
+
+    wsRef.current.send(JSON.stringify({ type: 'input', sessionId, data }))
+    return true
   }
 
   return { connected, subscribe, subscribeWithRetry, sendInput }
