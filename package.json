@@ -52,9 +52,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "unittest": "bun test",
+    "test": "bun test",
     "test:e2e": "PW_DISABLE_TS_ESM=1 NODE_ENV=test bun --bun playwright test",
-    "test:all": "bun unittest && bun test:e2e",
+    "test:all": "bun test && bun test:e2e",
     "build:plugin": "tsc -p tsconfig.build.json && bun x copyfiles -u 0 \"src/**/*.txt\" dist",
     "build:dev": "bun clean && bun build:plugin && vite build --mode development",
     "build:prod": "bun clean && bun build:plugin && vite build --mode production",

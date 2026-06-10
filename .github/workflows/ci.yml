@@ -83,7 +83,7 @@ jobs:
         run: devenv shell -- env PLAYWRIGHT_BROWSERS_PATH=0 bunx playwright install chromium firefox
 
       - name: Quality checks (bun test)
-        run: devenv shell -- bun unittest
+        run: devenv shell -- bun test
       - name: Quality checks (typecheck)
         run: devenv shell -- bun typecheck
       - name: Quality checks (lint)
