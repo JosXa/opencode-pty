@@ -17,6 +17,7 @@ function session(status: PTYSession['status'] = 'running'): PTYSession {
     parentSessionId: 'parent-session-id',
     notifyOnExit: false,
     snapshotWaiters: 0,
+    snapshotWaitDelivered: false,
     buffer: new RingBuffer(),
     snapshot: new TerminalSnapshot(120, 40),
     process: null,

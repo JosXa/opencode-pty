@@ -197,6 +197,77 @@ describe('PTY Manager Integration', () => {
       expect(abortCalls).toBe(0)
     })
 
+    // Regression for the screenshot-reported double-delivery bug:
+    //
+    //   <pty_snapshot_wait id="pty_596dea3b" status="running" result="matched"
+    //                      waited="5028ms" seq="0" hash="14695981039346656037" />
+    //   ...later in the same chat...
+    //   <pty_exited> ID: pty_596dea3b  Elapsed: 66.5s  Exit Code: 0  ... </pty_exited>
+    //
+    // One PTY produced TWO "completion-ish" messages to the agent: first the
+    // snapshot_wait tool result, then a separate <pty_exited> prompt for the
+    // SAME pty id. The original ask was that the in-flight wait would be
+    // canceled/suppressed in tandem with the exit notification so the agent
+    // only ever hears about a given pty's completion once. This test pins the
+    // user-visible contract without prescribing which side absorbs the other.
+    it('does not deliver both a pty_snapshot_wait response and a <pty_exited> prompt for the same pty', async () => {
+      // Capture every promptAsync the notification manager forwards. From the
+      // agent's POV each call becomes a chat message attributed to the parent
+      // session, so this is the right surface to inspect.
+      const promptTexts: string[] = []
+      manager.init({
+        session: {
+          abort: async () => {},
+          promptAsync: async (payload: { body: { parts: Array<{ text: string }> } }) => {
+            promptTexts.push(payload.body.parts[0]?.text ?? '')
+          },
+        },
+      } as never)
+
+      // Spawn a PTY that lives long enough to enter a snapshot_wait, produces
+      // no output (so the rendered screen stays empty), then exits cleanly.
+      // notifyOnExit=true so the plugin would normally queue a <pty_exited>
+      // prompt at process exit -- mirroring the screenshot scenario.
+      const title = crypto.randomUUID()
+      const session = manager.spawn({
+        title,
+        command: 'sh',
+        args: ['-c', 'sleep 1; exit 0'],
+        description: 'Wait+exit duplicate-delivery regression',
+        parentSessionId: managedTestServer.sessionId,
+        notifyOnExit: true,
+      })
+
+      // Issue a snapshot_wait that completes via hashStableMs against the empty
+      // initial screen -- the exact path that produced result="matched"
+      // status="running" seq="0" in the bug report.
+      const waitResult = await failAfter(
+        ptySnapshotWait.execute({ id: session.id, hashStableMs: 250, timeout: 5000 }, toolContext),
+        2500,
+        'pty_snapshot_wait did not resolve'
+      )
+
+      // Sanity: the wait did return a result that the agent saw for THIS pty.
+      // This is one of the two competing messages from the bug report.
+      expect(waitResult).toContain(`id="${session.id}"`)
+
+      // Give the PTY time to actually exit AND let the notification manager
+      // flush any queued <pty_exited> prompt. If the bug is present, this is
+      // when the second message lands in the agent's chat.
+      await new Promise((resolve) => setTimeout(resolve, 1800))
+
+      const exitedPromptsForThisPty = promptTexts.filter(
+        (text) => text.includes('<pty_exited>') && text.includes(session.id)
+      )
+
+      // The user-visible contract: a single pty MUST NOT generate both a
+      // snapshot_wait response and a separate <pty_exited> prompt. Either the
+      // exit cancels/absorbs the in-flight wait, or the wait suppresses the
+      // subsequent exit prompt. This test does not care which -- only that
+      // the agent never sees both for the same id.
+      expect(exitedPromptsForThisPty).toEqual([])
+    })
+
     it('should provide session data in correct format', async () => {
       await using managedTestClient = await ManagedTestClient.create(
         managedTestServer.server.getWsUrl()

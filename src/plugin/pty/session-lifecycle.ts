@@ -40,6 +40,7 @@ export class SessionLifecycleManager {
       parentAgent: opts.parentAgent,
       notifyOnExit: opts.notifyOnExit ?? false,
       snapshotWaiters: 0,
+      snapshotWaitDelivered: false,
       buffer,
       snapshot,
       process: null, // will be set

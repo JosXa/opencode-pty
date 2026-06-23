@@ -74,7 +74,13 @@ export class NotificationManager {
     try {
       const elapsedMs = getElapsedMs(session)
 
-      if (isQuickInterrupt(elapsedMs) && session.snapshotWaiters === 0) {
+      // A snapshot_wait response is already a user-visible update for this PTY.
+      // Do not follow it with a second agent prompt for the same session id.
+      if (session.snapshotWaiters > 0 || session.snapshotWaitDelivered) {
+        return
+      }
+
+      if (isQuickInterrupt(elapsedMs)) {
         await this.client.session.abort({ path: { id: session.parentSessionId } })
       }
 

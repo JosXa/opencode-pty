@@ -79,6 +79,9 @@ export class OutputManager {
         ...condition,
         exit: () => session.status !== 'running',
       })
+      if (result.matched || result.exited) {
+        session.snapshotWaitDelivered = true
+      }
       return {
         ...result,
         id: session.id,
