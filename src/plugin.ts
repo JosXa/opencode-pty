@@ -24,10 +24,12 @@ export const PTYPlugin = async ({ client, directory }: PluginContext): Promise<P
   let ptyServer: PTYServer | undefined
 
   return {
-    'command.execute.before': async (input) => {
+    'command.execute.before': async (input, output) => {
       if (input.command !== ptyOpenClientCommand && input.command !== ptyShowServerUrlCommand) {
         return
       }
+
+      output.parts.length = 0
       if (ptyServer === undefined) {
         ptyServer = await PTYServer.createServer()
       }
@@ -48,7 +50,6 @@ export const PTYPlugin = async ({ client, directory }: PluginContext): Promise<P
           },
         })
       }
-      throw new Error('Command handled by PTY plugin')
     },
     tool: {
       pty_spawn: ptySpawn,
