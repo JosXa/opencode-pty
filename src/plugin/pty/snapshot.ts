@@ -81,8 +81,8 @@ export interface WaitCondition {
   search?: RegExp
   /** RegExp that must no longer match the screen text. Resolves on first absence. */
   searchAbsent?: RegExp
-  /** Resolve when the content hash stays unchanged for this many ms. */
-  hashStableMs?: number
+  /** Screen quiescence window in ms. */
+  screenStableForMs?: number
   /** Maximum time to wait before giving up (default: 30000). */
   timeoutMs?: number
   /** Return early when the PTY exits before another condition matches. */
@@ -228,13 +228,24 @@ export class TerminalSnapshot {
    * Supported conditions (at least one must be provided):
    *  - `search`: resolves when screen text matches the regex
    *  - `searchAbsent`: resolves when screen text no longer matches the regex
-   *  - `hashStableMs`: resolves when content hash is unchanged for N ms
+   *  - `screenStableForMs`: resolves after the screen is quiescent for N ms
    *
    * If multiple are provided, the first condition to match wins.
    */
   async waitForCondition(condition: WaitCondition): Promise<WaitResult> {
     const POLL_INTERVAL_MS = 100
     const timeoutMs = condition.timeoutMs ?? 30_000
+    const screenStableForMs =
+      condition.screenStableForMs != null && condition.screenStableForMs > 0
+        ? condition.screenStableForMs
+        : undefined
+
+    if (!condition.search && !condition.searchAbsent && screenStableForMs == null) {
+      throw new Error(
+        'At least one condition must be provided: search, searchAbsent, or screenStableForMs.'
+      )
+    }
+
     const start = Date.now()
 
     let lastHash = this.cachedState.contentHash
@@ -262,12 +273,12 @@ export class TerminalSnapshot {
         return { matched: true, waitedMs: Date.now() - start, state }
       }
 
-      // hashStable condition: track when hash last changed
-      if (condition.hashStableMs != null) {
+      // screenStableFor condition: track when the rendered screen last changed
+      if (screenStableForMs != null) {
         if (state.contentHash !== lastHash) {
           lastHash = state.contentHash
           lastHashChangeTime = Date.now()
-        } else if (Date.now() - lastHashChangeTime >= condition.hashStableMs) {
+        } else if (Date.now() - lastHashChangeTime >= screenStableForMs) {
           return { matched: true, waitedMs: Date.now() - start, state }
         }
       }

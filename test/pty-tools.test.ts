@@ -375,7 +375,7 @@ describe('PTY Tools', () => {
       expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
         search: /READY/,
         searchAbsent: undefined,
-        hashStableMs: undefined,
+        screenStableForMs: undefined,
         timeoutMs: 1000,
       })
       expect(result).toContain('result="exited"')
@@ -416,14 +416,14 @@ describe('PTY Tools', () => {
       expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
         search: undefined,
         searchAbsent: /esc interrupt/,
-        hashStableMs: undefined,
+        screenStableForMs: undefined,
         timeoutMs: 1000,
       })
       expect(result).toContain('result="matched"')
       expect(result).toContain('ready')
     })
 
-    it('should treat empty optional string conditions as omitted', async () => {
+    it('should treat empty optional string conditions and non-positive screenStableForMs as omitted', async () => {
       spyOn(manager, 'snapshotWait').mockResolvedValue({
         id: 'test-session-id',
         status: 'running',
@@ -441,7 +441,13 @@ describe('PTY Tools', () => {
       })
 
       await ptySnapshotWait.execute(
-        { id: 'test-session-id', search: 'READY', searchAbsent: '', timeout: 1000 },
+        {
+          id: 'test-session-id',
+          search: 'READY',
+          searchAbsent: '',
+          screenStableForMs: 0,
+          timeout: 1000,
+        },
         {
           sessionID: 'parent',
           messageID: 'msg',
@@ -457,7 +463,7 @@ describe('PTY Tools', () => {
       expect(manager.snapshotWait).toHaveBeenCalledWith('test-session-id', {
         search: /READY/,
         searchAbsent: undefined,
-        hashStableMs: undefined,
+        screenStableForMs: undefined,
         timeoutMs: 1000,
       })
     })
@@ -499,7 +505,7 @@ describe('PTY Tools', () => {
       })
 
       const result = await ptySnapshotWait.execute(
-        { id: 'test-session-id', hashStableMs: 500, timeout: 4000, since: 12 },
+        { id: 'test-session-id', screenStableForMs: 500, timeout: 4000, since: 12 },
         {
           sessionID: 'parent',
           messageID: 'msg',

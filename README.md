@@ -270,7 +270,7 @@ pty_snapshot_wait: id="pty_a1b2c3d4", search="error|Error", timeout=30000
 pty_snapshot_wait: id="pty_a1b2c3d4", searchAbsent="esc interrupt", timeout=30000
 → Resolves when that text is no longer visible on the rendered screen
 
-pty_snapshot_wait: id="pty_a1b2c3d4", hashStableMs=2000, timeout=30000
+pty_snapshot_wait: id="pty_a1b2c3d4", screenStableForMs=2000, timeout=30000
 → Resolves when screen content is unchanged for 2 seconds
 ```
 
@@ -286,7 +286,7 @@ pty_spawn: command="opencode", args=["path/to/project"], title="Inner OpenCode"
 → pty_abc123
 
 # 2. Wait for it to render, get initial screen state
-pty_snapshot_wait: id="pty_abc123", hashStableMs=2000, timeout=15000
+pty_snapshot_wait: id="pty_abc123", screenStableForMs=2000, timeout=15000
 → seq=2, shows OpenCode banner + input field
 
 # 3. Type a prompt and submit
@@ -294,13 +294,13 @@ pty_write: id="pty_abc123", data="explain this codebase"
 pty_write: id="pty_abc123", data="\n"
 
 # 4. Watch the response stream in, frame by frame
-pty_snapshot_wait: id="pty_abc123", hashStableMs=300, since=2
+pty_snapshot_wait: id="pty_abc123", screenStableForMs=300, since=2
 → seq=15, diff shows partial response text appearing
 
-pty_snapshot_wait: id="pty_abc123", hashStableMs=300, since=15
+pty_snapshot_wait: id="pty_abc123", screenStableForMs=300, since=15
 → seq=28, more text streamed in
 
-pty_snapshot_wait: id="pty_abc123", hashStableMs=3000, since=28
+pty_snapshot_wait: id="pty_abc123", screenStableForMs=3000, since=28
 → seq=46, response complete (stable for 3s)
 
 # 5. Open the command palette

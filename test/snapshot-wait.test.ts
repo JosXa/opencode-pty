@@ -94,6 +94,39 @@ describe('snapshotWait', () => {
     expect(result.waitedMs).toBeLessThan(1000)
   })
 
+  it('does not treat screenStableForMs=0 as an immediate match when another condition is pending', async () => {
+    const snapshot = new TerminalSnapshot(120, 40)
+    snapshot.write('status: starting')
+    await snapshot.getSettledState()
+
+    const waitPromise = snapshot.waitForCondition({
+      search: /status: ready/,
+      screenStableForMs: 0,
+      timeoutMs: 1000,
+    })
+
+    setTimeout(() => {
+      snapshot.write('\rstatus: ready   ')
+    }, 50)
+
+    const result = await waitPromise
+
+    expect(result.matched).toBe(true)
+    expect(result.waitedMs).toBeGreaterThanOrEqual(40)
+    expect(result.state.text).toContain('status: ready')
+  })
+
+  it('does not treat screenStableForMs=0 as a provided condition by itself', async () => {
+    const snapshot = new TerminalSnapshot(120, 40)
+
+    await expect(
+      snapshot.waitForCondition({
+        screenStableForMs: 0,
+        timeoutMs: 1000,
+      })
+    ).rejects.toThrow('At least one condition must be provided')
+  })
+
   it('captures rendered foreground and background color maps', async () => {
     const snapshot = new TerminalSnapshot(12, 3)
     snapshot.write('\u001b[31mR\u001b[0m\u001b[44mB\u001b[0m\u001b[7mI\u001b[0m')

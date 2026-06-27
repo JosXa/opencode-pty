@@ -238,11 +238,14 @@ describe('PTY Manager Integration', () => {
         notifyOnExit: true,
       })
 
-      // Issue a snapshot_wait that completes via hashStableMs against the empty
+      // Issue a snapshot_wait that completes via screenStableForMs against the empty
       // initial screen -- the exact path that produced result="matched"
       // status="running" seq="0" in the bug report.
       const waitResult = await failAfter(
-        ptySnapshotWait.execute({ id: session.id, hashStableMs: 250, timeout: 5000 }, toolContext),
+        ptySnapshotWait.execute(
+          { id: session.id, screenStableForMs: 250, timeout: 5000 },
+          toolContext
+        ),
         2500,
         'pty_snapshot_wait did not resolve'
       )
