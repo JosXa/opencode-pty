@@ -31,7 +31,7 @@ function getElapsedMs(session: PTYSession): number {
   return Math.max(0, Date.now() - session.createdAt.getTime())
 }
 
-function isQuickInterrupt(elapsedMs: number): boolean {
+function isQuickExit(elapsedMs: number): boolean {
   return elapsedMs <= FAST_EXIT_INTERRUPT_MS
 }
 
@@ -80,11 +80,17 @@ export class NotificationManager {
         return
       }
 
-      if (isQuickInterrupt(elapsedMs)) {
-        await this.client.session.abort({ path: { id: session.parentSessionId } })
+      let quickInterrupt = false
+      if (isQuickExit(elapsedMs)) {
+        const owner = await this.client.session.get({ path: { id: session.parentSessionId } })
+        // Root sessions are interactive; child sessions must not cancel their foreground Task.
+        quickInterrupt = owner.data !== undefined && owner.data.parentID === undefined
+        if (quickInterrupt) {
+          await this.client.session.abort({ path: { id: session.parentSessionId } })
+        }
       }
 
-      const message = this.buildExitNotification(session, exitCode, elapsedMs)
+      const message = this.buildExitNotification(session, exitCode, elapsedMs, quickInterrupt)
       await this.client.session.promptAsync({
         path: { id: session.parentSessionId },
         body: {
@@ -97,7 +103,12 @@ export class NotificationManager {
     }
   }
 
-  private buildExitNotification(session: PTYSession, exitCode: number, elapsedMs: number): string {
+  private buildExitNotification(
+    session: PTYSession,
+    exitCode: number,
+    elapsedMs: number,
+    quickInterrupt: boolean
+  ): string {
     const lineCount = session.buffer.length
     let lastLine = ''
     if (lineCount > 0) {
@@ -119,8 +130,6 @@ export class NotificationManager {
       displayTitle.length > NOTIFICATION_TITLE_TRUNCATE
         ? `${displayTitle.slice(0, NOTIFICATION_TITLE_TRUNCATE)}...`
         : displayTitle
-    const quickInterrupt = isQuickInterrupt(elapsedMs)
-
     const lines = [
       '<pty_exited>',
       `ID: ${session.id}`,
